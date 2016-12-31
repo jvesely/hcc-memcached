@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include <future>
 #include <iostream>
 
 static const struct option options[] = {
@@ -70,15 +71,16 @@ int main(int argc, char *argv[])
 		::std::cerr << "Invalid configuration: " << p << ::std::endl;
 		return 1;
 	}
-	p.on_switch = 0x3;
+	p.on_switch = 1;
 	::std::cout << "Running " << argv[0] << " " << p << ::std::endl;
-	async_process_cpu(p.write_socket, p.on_switch);
-	async_process_gpu(p.write_socket, p.on_switch);
+	auto cpu = ::std::async(::std::launch::async, async_process_cpu,
+	                        p.write_socket, &p.on_switch);
+	auto gpu = ::std::async(::std::launch::async, async_process_gpu,
+	                        p.read_socket, &p.on_switch);
 	::std::cout << "Press any key to exit: ";
 	getchar();
-	p.on_switch &= ~0x3;
-	while (p.on_switch != 0) {
-		sleep(1);
-	}
+	p.on_switch = 0;
+	cpu.wait();
+	gpu.wait();
 	return 0;
 }

@@ -46,5 +46,5 @@ static inline ::std::ostream & operator << (::std::ostream &O, const params &p)
 #  endif
 #endif
 
-int async_process_cpu(int socket, ::std::atomic_uint &on_switch);
-int async_process_gpu(int socket, ::std::atomic_uint &on_switch);
+int async_process_cpu(int socket, ::std::atomic_uint *on_switch);
+int async_process_gpu(int socket, ::std::atomic_uint *on_switch);
