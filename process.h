@@ -1,6 +1,7 @@
 #pragma once
 #include <atomic>
 #include <ostream>
+#include <thread>
 
 #include <unistd.h>
 #include <sys/socket.h>
@@ -15,6 +16,7 @@ struct params {
 	int cpu_socket = -1;
 	int gpu_socket = -1;
 	bool verbose = false;
+	unsigned thread_count = ::std::thread::hardware_concurrency();
 	::std::atomic_uint on_switch;
 
 	params():on_switch(0) {};
@@ -44,7 +46,8 @@ struct params {
 static inline ::std::ostream & operator << (::std::ostream &O, const params &p)
 {
 	O << "[" << p.gpu_socket << "r, " << p.cpu_socket << "w, "
-	  << p.buffer_size << "B" << (p.verbose ? ", v":"") << "]";
+	  << p.buffer_size << "B, " << p.thread_count << "T"
+	  << (p.verbose ? ", v":"") << "]";
 	return O;
 }
 

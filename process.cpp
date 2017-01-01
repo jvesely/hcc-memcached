@@ -38,12 +38,10 @@ static void cpu_process(const params *p)
 
 int async_process_cpu(const params *p)
 {
-	unsigned thread_count = ::std::thread::hardware_concurrency();
-	::std::cout << "Launching " << thread_count << " CPU threads\n";
-
 	::std::deque<::std::thread> threads;
-	while (thread_count--)
+	while (threads.size() < p->thread_count)
 		threads.push_back(::std::thread(cpu_process, p));
+	::std::cout << "Launched " << threads.size() << " CPU threads\n";
 	for (auto &t: threads)
 		t.join();
 	return 0;
