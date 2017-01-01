@@ -50,15 +50,26 @@ int async_process_gpu(const params *p)
 {
 	// HCC is bad with global variables
 	auto &sc = syscalls::get();
-	::std::string hello("Hello from the GPU\n");
+	::std::vector<char> buffer(p->buffer_size);
+	struct sockaddr_in address = {0};
+	uint64_t addr = (uint64_t)&address;
+	uint64_t socket = p->gpu_socket;
+	socklen_t address_len = sizeof(address);
 
 	auto textent = hc::extent<1>::extent(1);
 	parallel_for_each(textent, [&](hc::index<1> idx) [[hc]] {
 		while (p->on_switch) {
-			sc.send(SYS_write, {(uint64_t)1,
-			                    (uint64_t)hello.c_str(),
-			                    hello.size()});
-			break;
+			address_len = sizeof(address);
+			size_t data_len = sc.send(SYS_recvfrom,
+			                          {(uint64_t)socket,
+						   (uint64_t)buffer.data(),
+						   buffer.size(), MSG_TRUNC,
+						   addr, (uint64_t)&address_len});
+			if (data_len > 0)
+				sc.send(SYS_write, {(uint64_t)1,
+				                    (uint64_t)buffer.data(),
+				                    ::std::min(data_len,
+				                               buffer.size())});
 		}
 	}).wait();
 	return 0;
