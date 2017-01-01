@@ -9,8 +9,9 @@
 #include <iostream>
 
 static const struct option options[] = {
-	{"read-port", required_argument, NULL, 'r'},
-	{"write-port", required_argument, NULL, 'w'},
+	{"cpu-port", required_argument, NULL, 'c'},
+	{"gpu-port", required_argument, NULL, 'g'},
+	{"buffer-size", required_argument, NULL, 'b'},
 	{"help", no_argument, NULL, 'h'},
 	{NULL, }
 };
@@ -47,13 +48,16 @@ int main(int argc, char *argv[])
 	params p;
 	char c;
 	opterr = 0;
-	while ((c = getopt_long(argc, argv, "r:w:h", options, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "c:g:b:h", options, NULL)) != -1) {
 		switch (c) {
-		case 'r':
-			p.open_read_socket(::std::stoi(optarg));
+		case 'c':
+			p.open_cpu_socket(::std::stoi(optarg));
 			break;
-		case 'w':
-			p.open_write_socket(::std::stoi(optarg));
+		case 'g':
+			p.open_gpu_socket(::std::stoi(optarg));
+			break;
+		case 'b':
+			p.buffer_size = ::std::stoi(optarg);
 			break;
 		default:
 			::std::cerr << "Unknown option: " << argv[optind -1]
@@ -73,10 +77,8 @@ int main(int argc, char *argv[])
 	}
 	p.on_switch = 1;
 	::std::cout << "Running " << argv[0] << " " << p << ::std::endl;
-	auto cpu = ::std::async(::std::launch::async, async_process_cpu,
-	                        p.write_socket, &p.on_switch);
-	auto gpu = ::std::async(::std::launch::async, async_process_gpu,
-	                        p.read_socket, &p.on_switch);
+	auto cpu = ::std::async(::std::launch::async, async_process_cpu, &p);
+	auto gpu = ::std::async(::std::launch::async, async_process_gpu, &p);
 	::std::cout << "Press any key to exit: ";
 	getchar();
 	p.on_switch = 0;

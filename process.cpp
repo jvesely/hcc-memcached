@@ -13,13 +13,15 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-static void cpu_process(int socket, ::std::atomic_uint *on)
+static void cpu_process(const params *p)
 {
+	int socket = p->cpu_socket;
+	const ::std::atomic_uint *on = &p->on_switch;
 	::std::thread::id my_id = ::std::this_thread::get_id();
 	struct sockaddr_in address = {0};
 	struct sockaddr *addr = (struct sockaddr *)&address;
 	socklen_t address_len = sizeof(address);
-	::std::vector<char> buffer(params::BUFFER_SIZE);
+	::std::vector<char> buffer(p->buffer_size);
 	while (*on) {
 		address_len = sizeof(address);
 		size_t data_len = recvfrom(socket, buffer.data(), buffer.size(),
@@ -32,19 +34,19 @@ static void cpu_process(int socket, ::std::atomic_uint *on)
 	}
 }
 
-int async_process_cpu(int socket, ::std::atomic_uint *on_switch)
+int async_process_cpu(const params *p)
 {
 	unsigned thread_count = ::std::thread::hardware_concurrency();
 	::std::cout << "Launching " << thread_count << " CPU threads\n";
 
 	::std::deque<::std::thread> threads;
 	while (thread_count--)
-		threads.push_back(::std::thread(cpu_process, socket, on_switch));
+		threads.push_back(::std::thread(cpu_process, p));
 	for (auto &t: threads)
 		t.join();
 	return 0;
 }
-int async_process_gpu(int socket, ::std::atomic_uint *on_switch)
+int async_process_gpu(const params *p)
 {
 	// HCC is bad with global variables
 	auto &sc = syscalls::get();
@@ -52,7 +54,7 @@ int async_process_gpu(int socket, ::std::atomic_uint *on_switch)
 
 	auto textent = hc::extent<1>::extent(1);
 	parallel_for_each(textent, [&](hc::index<1> idx) [[hc]] {
-		while (*on_switch) {
+		while (p->on_switch) {
 			sc.send(SYS_write, {(uint64_t)1,
 			                    (uint64_t)hello.c_str(),
 			                    hello.size()});
