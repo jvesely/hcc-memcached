@@ -14,6 +14,7 @@ struct params {
 	size_t buffer_size = 4096;
 	int cpu_socket = -1;
 	int gpu_socket = -1;
+	bool verbose = false;
 	::std::atomic_uint on_switch;
 
 	params():on_switch(0) {};
@@ -42,7 +43,8 @@ struct params {
 };
 static inline ::std::ostream & operator << (::std::ostream &O, const params &p)
 {
-	O << "[" << p.gpu_socket << "r, " << p.cpu_socket << "w]";
+	O << "[" << p.gpu_socket << "r, " << p.cpu_socket << "w, "
+	  << p.buffer_size << "B" << (p.verbose ? ", v":"") << "]";
 	return O;
 }
 

@@ -12,6 +12,7 @@ static const struct option options[] = {
 	{"cpu-port", required_argument, NULL, 'c'},
 	{"gpu-port", required_argument, NULL, 'g'},
 	{"buffer-size", required_argument, NULL, 'b'},
+	{"verbose", no_argument, NULL, 'v'},
 	{"help", no_argument, NULL, 'h'},
 	{NULL, }
 };
@@ -48,7 +49,7 @@ int main(int argc, char *argv[])
 	params p;
 	char c;
 	opterr = 0;
-	while ((c = getopt_long(argc, argv, "c:g:b:h", options, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "c:g:b:vh", options, NULL)) != -1) {
 		switch (c) {
 		case 'c':
 			p.open_cpu_socket(::std::stoi(optarg));
@@ -58,6 +59,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'b':
 			p.buffer_size = ::std::stoi(optarg);
+			break;
+		case 'v':
+			p.verbose = true;
 			break;
 		default:
 			::std::cerr << "Unknown option: " << argv[optind -1]

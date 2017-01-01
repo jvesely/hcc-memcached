@@ -26,7 +26,9 @@ static void cpu_process(const params *p)
 		address_len = sizeof(address);
 		size_t data_len = recvfrom(socket, buffer.data(), buffer.size(),
 		                           MSG_TRUNC, addr, &address_len);
-		::std::cout << "Data for " << my_id << ":" << data_len << "\n";
+		if (p->verbose)
+			::std::cout << "Data for " << my_id << ":"
+			            << data_len << "\n";
 		if (data_len > 0)
 			sendto(socket, buffer.data(), ::std::min(data_len,
 			                                         buffer.size()),
