@@ -67,10 +67,11 @@ int async_process_gpu(const params *p)
 			                            addr,
 			                            (uint64_t)&address_len});
 			if (data_len > 0)
-				sc.send(SYS_write, {((uint64_t)1),
-				                    (uint64_t)buffer.data(),
-				                    ::std::min<size_t>(data_len,
-				                               buffer.size())});
+				sc.send(SYS_sendto, {(uint64_t)socket,
+				                     (uint64_t)buffer.data(),
+				                     ::std::min<size_t>(data_len,
+				                               buffer.size()),
+						     0, addr, address_len});
 		}
 	}).wait();
 	return 0;
