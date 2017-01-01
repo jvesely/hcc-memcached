@@ -60,15 +60,16 @@ int async_process_gpu(const params *p)
 	parallel_for_each(textent, [&](hc::index<1> idx) [[hc]] {
 		while (p->on_switch) {
 			address_len = sizeof(address);
-			size_t data_len = sc.send(SYS_recvfrom,
-			                          {(uint64_t)socket,
-						   (uint64_t)buffer.data(),
-						   buffer.size(), MSG_TRUNC,
-						   addr, (uint64_t)&address_len});
+			ssize_t data_len = sc.send(SYS_recvfrom,
+			                           {(uint64_t)socket,
+			                            (uint64_t)buffer.data(),
+			                            buffer.size(), MSG_TRUNC,
+			                            addr,
+			                            (uint64_t)&address_len});
 			if (data_len > 0)
-				sc.send(SYS_write, {(uint64_t)1,
+				sc.send(SYS_write, {((uint64_t)1),
 				                    (uint64_t)buffer.data(),
-				                    ::std::min(data_len,
+				                    ::std::min<size_t>(data_len,
 				                               buffer.size())});
 		}
 	}).wait();
