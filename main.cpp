@@ -80,6 +80,7 @@ int main(int argc, char *argv[])
 	::std::cout << "Press any key to exit: ";
 	getchar();
 	p.on_switch = 0;
+	p.close_all();
 	cpu.wait();
 	gpu.wait();
 	return 0;
