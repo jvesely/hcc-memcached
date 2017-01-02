@@ -17,6 +17,7 @@ struct params {
 	int gpu_socket = -1;
 	bool verbose = false;
 	unsigned thread_count = ::std::thread::hardware_concurrency();
+	unsigned bucket_size = 128;
 	::std::atomic_uint on_switch;
 
 	params():on_switch(0) {};
@@ -24,7 +25,9 @@ struct params {
 	{ close_all(); }
 
 	bool isValid() const
-	{ return cpu_socket != -1 || gpu_socket != -1; }
+	{ return (cpu_socket != -1 || gpu_socket != -1) && buffer_size > 0
+	         && (bucket_size <= 1024) && (bucket_size > 0)
+	         && (bucket_size % 64 == 0); }
 
 	static void open_udp_socket(int &socket, int port);
 
@@ -46,8 +49,8 @@ struct params {
 static inline ::std::ostream & operator << (::std::ostream &O, const params &p)
 {
 	O << "[" << p.gpu_socket << "r, " << p.cpu_socket << "w, "
-	  << p.buffer_size << "B, " << p.thread_count << "T"
-	  << (p.verbose ? ", v":"") << "]";
+	  << p.buffer_size << "B, " << p.thread_count << "T, "
+	  << p.bucket_size << "WG"  << (p.verbose ? ", v":"") << "]";
 	return O;
 }
 
