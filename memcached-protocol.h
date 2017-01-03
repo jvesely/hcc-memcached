@@ -1,5 +1,22 @@
 #include <hc.hpp>
 #include <string>
+#include <ostream>
+
+struct mc_header {
+	enum { MC_MAGIC_REQUEST = 0x80, MC_MAGIC_RESPONSE = 0x81 };
+	uint8_t magic;
+	uint8_t opcode;
+	uint16_t key_size;
+	uint8_t extras_size;
+	uint8_t data_type;
+	union {
+		uint16_t vbucket_id;
+		uint16_t status;
+	};
+	uint32_t total_size;
+	uint32_t reserved;
+	uint64_t cas;
+};
 
 struct udp_header {
 	unsigned request_id;
@@ -10,9 +27,15 @@ struct udp_header {
 
 class memcached_command
 {
-	enum mc_cmd {
-		ERROR, CLIENT_ERROR, GET, GETS, SET, ADD, REPLACE, APPEND, PREPEND, CAS, DELETE,
-	} cmd_;
+public:
+	enum mc_cmd:char {
+		ERROR, CLIENT_ERROR, GET, GETS, SET, ADD, REPLACE, APPEND, PREPEND, CAS, DELETE, REPLY
+	};
+private:
+        mc_cmd cmd_;
+	bool no_reply_ = false;
+	unsigned flags_ = 0;
+
 	const char *key_ = nullptr;
 	size_t key_size_ = 0;
 
@@ -22,18 +45,32 @@ class memcached_command
 
 	memcached_command(mc_cmd cmd) : cmd_(cmd) {};
 	memcached_command(mc_cmd cmd, const char *key, size_t key_size,
-	                  const char *data, size_t data_size)
-		: cmd_(cmd), key_(key), key_size_(key_size),
+	                  unsigned flags = 0, bool no_reply = false,
+	                  const char *data = nullptr, size_t data_size = 0)
+		: cmd_(cmd), no_reply_(no_reply), flags_(flags),
+	          key_(key), key_size_(key_size),
        		  data_(data), data_size_(data_size) {};
 public:
+	static memcached_command get_reply(const char * message)
+	{ return memcached_command(REPLY, nullptr, 0, 0, false,
+	                           message, ::std::strlen(message)); }
 	static memcached_command get_error()
-	{ return memcached_command(ERROR, nullptr, 0, nullptr, 0); }
+	{ return memcached_command(ERROR); }
 
 	static memcached_command get_client_error(const char* str, size_t size)
-	{ return memcached_command(CLIENT_ERROR, str, size, nullptr, 0); }
+	{ return memcached_command(CLIENT_ERROR, str, size); }
 
 	static memcached_command parse_udp(const char *data, size_t size);
 
-	::std::string get_key();
+	const char * get_cmd_string() const;
+	mc_cmd get_cmd() const
+	{ return cmd_; };
+	::std::string get_key() const
+	{ return ::std::string(key_, key_size_); }// This creates a copy
+	::std::vector<char> get_data() const
+	{ return ::std::vector<char>(data_, data_ + data_size_); }
 	size_t generate_packet(char *buffer, size_t size);
+
+	friend ::std::ostream & operator << (::std::ostream &O,
+	                                     const memcached_command &cmd);
 };

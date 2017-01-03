@@ -36,9 +36,19 @@ static void cpu_process(const params *p)
 				memcached_command::get_error().generate_packet(
 					buffer.data() + 8, buffer.size() - 8);
 		} else { // error for now
-			response_size +=
-				memcached_command::get_error().generate_packet(
-					buffer.data() + 8, buffer.size() - 8);
+			memcached_command cmd =
+				memcached_command::parse_udp(buffer.data(),
+				                             data_len);
+			if (cmd.get_cmd() == memcached_command::SET) {
+				response_size +=
+					memcached_command::get_reply("STORED\r\n").generate_packet(
+						buffer.data() + 8, buffer.size() - 8);
+			} else {
+				::std::cout << cmd << ::std::endl;
+				response_size +=
+					memcached_command::get_error().generate_packet(
+						buffer.data() + 8, buffer.size() - 8);
+			}
 		}
 		sendto(socket, buffer.data(), response_size, 0, addr, address_len);
 	}
