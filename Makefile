@@ -1,5 +1,6 @@
 SRCS= \
 	main.cpp \
+	memcached-protocol.cpp \
 	process-cpu.cpp \
 	process-gpu.cpp
 

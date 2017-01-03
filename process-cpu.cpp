@@ -1,5 +1,7 @@
 #include "process.h"
 
+#include "memcached-protocol.h"
+
 #include <chrono>
 #include <deque>
 #include <iostream>
@@ -25,10 +27,20 @@ static void cpu_process(const params *p)
 		if (p->verbose)
 			::std::cout << "Data for " << my_id << ":"
 			            << data_len << "\n";
-		if (data_len > 0)
-			sendto(socket, buffer.data(), ::std::min(data_len,
-			                                         buffer.size()),
-			       0, addr, address_len);
+
+		if (data_len == 0) //spurious return
+			continue;
+		size_t response_size = 8;
+		if (data_len > buffer.size()) { // truncated
+			response_size +=
+				memcached_command::get_error().generate_packet(
+					buffer.data() + 8, buffer.size() - 8);
+		} else { // error for now
+			response_size +=
+				memcached_command::get_error().generate_packet(
+					buffer.data() + 8, buffer.size() - 8);
+		}
+		sendto(socket, buffer.data(), response_size, 0, addr, address_len);
 	}
 }
 
