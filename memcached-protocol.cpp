@@ -125,18 +125,14 @@ memcached_command memcached_command::parse_udp(const char *data, size_t size)
 	return get_error();
 }
 
-static const ::std::string error(" ERROR\r\n");
-
-size_t memcached_command::generate_packet(char *buffer, size_t size)
+bool memcached_command::generate_packet(packet_stream &pg)
 {
-	if ((cmd_ == ERROR) && (size > error.size()))
-		return error.copy(buffer, size);
-	if ((cmd_ == REPLY) && (size >= data_size_)) {
-		::std::memcpy(buffer, data_, data_size_);
-		return data_size_;
-	}
+	if (cmd_ == ERROR)
+		return (pg << "ERROR\r\n").is_ok();
+	if (cmd_ == CLIENT_ERROR)
+		return (pg << "CLIENT ERROR").append(key_ , key_size_).is_ok();
 
-	return 0;
+	return false;
 }
 
 const char *memcached_command::get_cmd_string() const

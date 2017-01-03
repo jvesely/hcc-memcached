@@ -1,3 +1,6 @@
+#pragma once
+#include "packet-stream.h"
+
 #include <hc.hpp>
 #include <string>
 #include <ostream>
@@ -29,7 +32,7 @@ class memcached_command
 {
 public:
 	enum mc_cmd:char {
-		ERROR, CLIENT_ERROR, GET, GETS, SET, ADD, REPLACE, APPEND, PREPEND, CAS, DELETE, REPLY
+		ERROR, CLIENT_ERROR, GET, GETS, SET, ADD, REPLACE, APPEND, PREPEND, CAS, DELETE
 	};
 private:
         mc_cmd cmd_;
@@ -51,9 +54,6 @@ private:
 	          key_(key), key_size_(key_size),
        		  data_(data), data_size_(data_size) {};
 public:
-	static memcached_command get_reply(const char * message)
-	{ return memcached_command(REPLY, nullptr, 0, 0, false,
-	                           message, ::std::strlen(message)); }
 	static memcached_command get_error()
 	{ return memcached_command(ERROR); }
 
@@ -71,7 +71,7 @@ public:
 	{ return ::std::string(key_, key_size_); }// This creates a copy
 	::std::vector<char> get_data() const
 	{ return ::std::vector<char>(data_, data_ + data_size_); }
-	size_t generate_packet(char *buffer, size_t size);
+	bool generate_packet(packet_stream &pg);
 
 	friend ::std::ostream & operator << (::std::ostream &O,
 	                                     const memcached_command &cmd);

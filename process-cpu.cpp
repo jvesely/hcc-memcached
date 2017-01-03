@@ -1,21 +1,27 @@
 #include "process.h"
 
 #include "memcached-protocol.h"
+#include "packet-stream.h"
 
 #include <chrono>
 #include <deque>
 #include <iostream>
 #include <thread>
 #include <vector>
+#include <unordered_map>
+#include <shared_mutex>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+
+// temporary
+static ::std::unordered_map<::std::string, ::std::vector<char>> storage_;
+static ::std::mutex storage_lock_;
 
 static void cpu_process(const params *p)
 {
 	int socket = p->cpu_socket;
 	const ::std::atomic_uint *on = &p->on_switch;
-	::std::thread::id my_id = ::std::this_thread::get_id();
 	struct sockaddr_in address = {0};
 	struct sockaddr *addr = (struct sockaddr *)&address;
 	socklen_t address_len = sizeof(address);
@@ -24,32 +30,44 @@ static void cpu_process(const params *p)
 		address_len = sizeof(address);
 		size_t data_len = recvfrom(socket, buffer.data(), buffer.size(),
 		                           MSG_TRUNC, addr, &address_len);
-		if (p->verbose)
-			::std::cout << "Data for " << my_id << ":"
-			            << data_len << "\n";
 
 		if (data_len == 0) //spurious return
 			continue;
+
 		size_t response_size = 8;
+		packet_stream packet(buffer.data() + 8, buffer.size() - 8);
+
 		if (data_len > buffer.size()) { // truncated
-			response_size +=
-				memcached_command::get_error().generate_packet(
-					buffer.data() + 8, buffer.size() - 8);
-		} else { // error for now
-			memcached_command cmd =
-				memcached_command::parse_udp(buffer.data(),
-				                             data_len);
-			if (cmd.get_cmd() == memcached_command::SET) {
-				response_size +=
-					memcached_command::get_reply("STORED\r\n").generate_packet(
-						buffer.data() + 8, buffer.size() - 8);
-			} else {
-				::std::cout << cmd << ::std::endl;
-				response_size +=
-					memcached_command::get_error().generate_packet(
-						buffer.data() + 8, buffer.size() - 8);
-			}
+			packet << "CLIENT ERROR 'too big'\r\n";
+			response_size += packet.get_size();
+			sendto(socket, buffer.data(), response_size, 0, addr, address_len);
+			continue;
 		}
+
+		memcached_command cmd =
+			memcached_command::parse_udp(buffer.data(), data_len);
+		if (cmd.get_cmd() == memcached_command::SET) {
+			::std::lock_guard<::std::mutex> l(storage_lock_);
+			storage_[cmd.get_key()] = cmd.get_data();
+			packet << "STORED\r\n";
+		} else
+		if (cmd.get_cmd() == memcached_command::GET) {
+			::std::lock_guard<::std::mutex> l(storage_lock_);
+			auto it = storage_.find(cmd.get_key());
+			if (it == storage_.end()) {
+				packet << "NOT_FOUND\r\n";
+			} else {
+				packet << "VALUE " << it->first;
+				packet << " 0"; //ignore flags
+				packet << " 1024\r\n"; //TODO get size
+				packet << it->second;
+				packet << "\r\nEND\r\n";
+			}
+		} else {
+			::std::cout << cmd << ::std::endl;
+			packet << "ERROR'\r\n";
+		}
+		response_size += packet.get_size();
 		sendto(socket, buffer.data(), response_size, 0, addr, address_len);
 	}
 }
