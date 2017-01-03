@@ -106,6 +106,22 @@ memcached_command memcached_command::parse_udp(const char *data, size_t size)
 		return  memcached_command(SET, key, key_size, flags,
 		                          noreply, data, data_size);
 	}
+	if (strncmp("get", data, space - data) == 0) {
+		size -= (space - data - 1);
+		data = space + 1;
+		space = next_space(data, size);
+		const char *end = next_char(data, size, '\r');
+		space = ::std::min(space, end);
+		if (space[0] != ' ' && space[0] != '\r')
+			return get_client_error(STR("malformed request key"));
+
+		const char *key = data;
+		size_t key_size = space - data;
+
+		return  memcached_command(GET, key, key_size);
+	}
+	::std::cerr << "UNKNOWN COMMAND FOUND: " << ::std::string(data, size)
+	            << ::std::endl;
 	return get_error();
 }
 

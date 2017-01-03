@@ -63,6 +63,8 @@ public:
 	static memcached_command parse_udp(const char *data, size_t size);
 
 	const char * get_cmd_string() const;
+	unsigned get_flags() const
+	{ return flags_; }
 	mc_cmd get_cmd() const
 	{ return cmd_; };
 	::std::string get_key() const
