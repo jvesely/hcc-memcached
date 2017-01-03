@@ -15,7 +15,8 @@ CXX=/opt/hcc-amdgpu/bin/hcc
 #hcc-config mixes compiler and preprocessor flags
 CPPFLAGS=$(shell $(HCC_CONFIG) --cxxflags --install) -Wall
 CXXFLAGS=$(shell $(HCC_CONFIG) --cxxflags --install) -g -O3 -Wall
-LDFLAGS=$(shell $(HCC_CONFIG) --ldflags --install)
+#for some reason hcc does not include libm
+LDFLAGS=$(shell $(HCC_CONFIG) --ldflags --install) -lm
 
 all: $(BIN)
 
