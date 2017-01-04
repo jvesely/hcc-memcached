@@ -59,8 +59,9 @@ static void cpu_process(const params *p)
 			} else {
 				packet << "VALUE " << it->first;
 				packet << " 0"; //ignore flags
-				packet << " 1024\r\n"; //TODO get size
-				packet << it->second;
+				packet << " ";
+				packet << (uint16_t)it->second.size();
+				packet << "\r\n" << it->second;
 				packet << "\r\nEND\r\n";
 			}
 		} else {

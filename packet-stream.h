@@ -31,6 +31,18 @@ public:
 		              c.size() * sizeof(typename T::value_type));
 	}
 
+	packet_stream & operator << (uint16_t n)
+	{
+		char c[5] = {0};
+		for (int i = 0; i < 5; ++i) {
+			c[4-i] = (n % 10) + '0';
+			n /= 10;
+		}
+		const char *p;
+		for (p = c; (*p == '0') && (p < (c + 5)); ++p);
+		return append(p, (c+5) - p);
+	}
+
 	packet_stream & operator << (const char* ptr)
 	{ return append(ptr, ::std::strlen(ptr)); }
 
