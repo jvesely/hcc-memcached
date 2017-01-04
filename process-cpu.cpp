@@ -66,7 +66,7 @@ static void cpu_process(const params *p)
 			}
 		} else {
 			::std::cout << cmd << ::std::endl;
-			packet << "ERROR'\r\n";
+			packet << "ERROR\r\n";
 		}
 		response_size += packet.get_size();
 		sendto(socket, buffer.data(), response_size, 0, addr, address_len);
