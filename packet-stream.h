@@ -3,26 +3,7 @@
 #include <string>
 #include <hc.hpp>
 
-// Provide GPU implementations of basic routines
-namespace std {
-	inline size_t strlen(const char *ch) __HC__
-	{
-		size_t s = 0;
-		while (*ch++ != '\0')
-			++s;
-		return s;
-	}
-
-	template<typename T>
-	inline T * memcpy(T *dst, const T *src, size_t count) __HC__
-	{
-		char *dst_ch = (char *)dst;
-		char *src_ch = (char *)src;
-		while (count--)
-			*dst_ch++ = *src_ch++;
-		return dst;
-	}
-};
+#include "hc-std-helpers.h"
 
 class packet_stream
 {
