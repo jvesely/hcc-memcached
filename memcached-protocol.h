@@ -56,13 +56,16 @@ private:
        		  data_(data), data_size_(data_size) {};
 public:
 	~memcached_command() __HC__ __CPU__ {};
-	static memcached_command get_error() __HC__ __CPU__
+	static memcached_command get_error()
 	{ return memcached_command(ERROR); }
 
 	static memcached_command get_client_error(const char* str, size_t size)
 	{ return memcached_command(CLIENT_ERROR, str, size); }
 
 	static memcached_command parse_udp(const char *data, size_t size);
+	/* This is a simplified version to get around HCC crashes */
+	static const char *
+		parse_get_key_end(const char *data, size_t size) __HC__;
 
 	const char * get_cmd_string() const;
 	unsigned get_flags() const

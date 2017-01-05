@@ -1,5 +1,6 @@
 #include "memcached-protocol.h"
 
+#include "hc-std-helpers.h"
 #include <iostream>
 
 ::std::ostream & operator << (::std::ostream &O, const mc_header &h)
@@ -30,16 +31,32 @@ udp_header udp_header::parse(const char data[8])
 	return O;
 }
 
-static const char *next_char(const char *data, size_t size, char c)
+static const char *next_char(const char *data, size_t size, char c) __HC__ __CPU__
 {
 	while (size-- && (data[0]) != c)
 		++data;
 	return data;
 }
 
-static const char *next_space(const char *data, size_t size)
+static const char *next_space(const char *data, size_t size) __HC__ __CPU__
 {
 	return next_char(data, size, ' ');
+}
+
+const char *
+memcached_command::parse_get_key_end(const char *data, size_t size) __HC__
+{
+	const udp_header hdr = udp_header::parse(data);
+	if (hdr.dgram_count != 1)
+		return nullptr;
+	data += 8;
+	size -= 8;
+	if (data[0] != 'g' || data[1] != 'e' || data[2] != 't' || data[3] != ' ')
+		return nullptr;
+	data += 4;
+	const char *space = next_space(data, size);
+	const char *end = next_char(data, size, '\r');
+	return ::std::min(space, end);
 }
 
 #define STR(str) str, (sizeof(str))
@@ -56,7 +73,7 @@ memcached_command memcached_command::parse_udp(const char *data, size_t size)
 	if (space[0] != ' ')
 		return get_client_error(STR("malformed request"));
 
-	if (strncmp("set", data, space - data) == 0) {
+	if (::std::strncmp("set", data, space - data) == 0) {
 		size -= (space - data - 1);
 		data = space + 1;
 		space = next_space(data, size);
@@ -106,7 +123,7 @@ memcached_command memcached_command::parse_udp(const char *data, size_t size)
 		return  memcached_command(SET, key, key_size, flags,
 		                          noreply, data, data_size);
 	}
-	if (strncmp("get", data, space - data) == 0) {
+	if (::std::strncmp("get", data, space - data) == 0) {
 		size -= (space - data - 1);
 		data = space + 1;
 		space = next_space(data, size);

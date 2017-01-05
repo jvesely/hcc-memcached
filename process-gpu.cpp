@@ -55,16 +55,21 @@ int async_process_gpu(const params *p)
 			if (data_len > buffer.size())
 				continue;
 
-			volatile tile_static struct
-				{ const char* begin; const char *end; } key;
+			volatile tile_static uint64_t key_begin;
+			volatile tile_static uint64_t key_end;
 			volatile tile_static bool any_found;
 			if (idx.local[0] == 0) {
 				any_found = false;
-				// implement parsing
-				memcached_command cmd =
-					memcached_command::get_error();
+				const char *begin = buffer.data() + 12;
+				// work around HCC bugs. end will be nullptr
+				// if the command is not "get"
+				const char *end =
+					memcached_command::parse_get_key_end(
+						buffer.data(), data_len);
 
-				if (cmd.get_cmd() == memcached_command::ERROR) {
+				key_begin = (uint64_t)begin;
+				key_end = (uint64_t)end;
+				if (begin == nullptr || end == nullptr) {
 					packet << "ERROR\r\n";
 					response_size += packet.get_size();
 					sc.send(SYS_sendto, {socket,
@@ -72,16 +77,10 @@ int async_process_gpu(const params *p)
 					                     response_size,
 							     0, addr,
 					                     address_len});
-					key.begin = nullptr;
-					key.end = nullptr;
-				} else {
-					// TODO get key location
-					key.begin = nullptr;
-					key.end = nullptr;
 				}
 			}
 			idx.barrier.wait_with_tile_static_memory_fence();
-			if (key.begin >= key.end)
+			if (key_begin >= key_end)
 				continue;
 
 			// implement lookup
