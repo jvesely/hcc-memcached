@@ -26,37 +26,41 @@ int async_process_gpu(const params *p)
 	auto textent = hc::extent<1>::extent(p->bucket_size).tile(p->bucket_size);
 	parallel_for_each(textent, [&](hc::tiled_index<1> idx) [[hc]] {
 		buffer_t &buffer = buffers[idx.tile[0]];
+		uint64_t buffer_ptr = (uint64_t)buffer.data();
+
 		while (p->on_switch) {
 			address_len = sizeof(address);
+			size_t response_size = 8;
+			packet_stream packet(buffer.data() + 8, buffer.size() - 8);
 			volatile tile_static ssize_t data_len;
 			if (idx.local[0] == 0) {
 				data_len = sc.send(SYS_recvfrom,
-				                   {(uint64_t)socket,
-				                    (uint64_t)buffer.data(),
-				                     buffer.size(), MSG_TRUNC,
-			                             addr,
+				                   {socket, buffer_ptr,
+				                    buffer.size(), MSG_TRUNC,
+			                            addr,
 			                            (uint64_t)&address_len});
+				if (data_len > buffer.size()) { // truncated
+					packet << "CLIENT ERROR 'too big'\r\n";
+					response_size += packet.get_size();
+					sc.send(SYS_sendto, {socket,
+					                     buffer_ptr,
+					                     response_size,
+							     0, addr,
+					                     address_len});
+				}
 			}
+
 			idx.barrier.wait_with_tile_static_memory_fence();
-			size_t response_size = 8;
-			packet_stream packet(buffer.data() + 8, buffer.size() - 8);
-
-			if (data_len > buffer.size()) { // truncated
-				packet << "CLIENT ERROR 'too big'\r\n";
-				response_size += packet.get_size();
-				sc.send(SYS_sendto, {(uint64_t)socket,
-				                     (uint64_t)buffer.data(),
-				                     response_size,
-						     0, addr, address_len});
+			if (data_len > buffer.size())
 				continue;
-			}
 
-			packet << "ERROR\r\n";
-			response_size += packet.get_size();
-			sc.send(SYS_sendto, {(uint64_t)socket,
-			                     (uint64_t)buffer.data(),
-			                     response_size,
-					     0, addr, address_len});
+			if (idx.local[0] == 0) {
+				packet << "ERROR\r\n";
+				response_size += packet.get_size();
+				sc.send(SYS_sendto, {socket, buffer_ptr,
+				                     response_size,
+				                     0, addr, address_len});
+			}
 		}
 	}).wait();
 	return 0;
