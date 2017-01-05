@@ -1,5 +1,6 @@
 #include "process.h"
 
+#include "memcached-protocol.h"
 #include "packet-stream.h"
 
 #include <hc.hpp>
@@ -54,12 +55,54 @@ int async_process_gpu(const params *p)
 			if (data_len > buffer.size())
 				continue;
 
+			volatile tile_static struct
+				{ const char* begin; const char *end; } key;
+			volatile tile_static bool any_found;
 			if (idx.local[0] == 0) {
-				packet << "ERROR\r\n";
+				any_found = false;
+				// implement parsing
+				memcached_command cmd =
+					memcached_command::get_error();
+
+				if (cmd.get_cmd() == memcached_command::ERROR) {
+					packet << "ERROR\r\n";
+					response_size += packet.get_size();
+					sc.send(SYS_sendto, {socket,
+					                     buffer_ptr,
+					                     response_size,
+							     0, addr,
+					                     address_len});
+					key.begin = nullptr;
+					key.end = nullptr;
+				} else {
+					// TODO get key location
+					key.begin = nullptr;
+					key.end = nullptr;
+				}
+			}
+			idx.barrier.wait_with_tile_static_memory_fence();
+			if (key.begin >= key.end)
+				continue;
+
+			// implement lookup
+			bool found = false;
+			if (found) {
+				any_found = true;
+				// TODO generate response
 				response_size += packet.get_size();
+				// Can this be non-blocking ?
 				sc.send(SYS_sendto, {socket, buffer_ptr,
 				                     response_size,
-				                     0, addr, address_len});
+						     0, addr, address_len});
+			}
+			idx.barrier.wait_with_tile_static_memory_fence();
+			if (idx.local[0] == 0 && !any_found) {
+				packet << "NOT FOUND\r\n";
+				response_size += packet.get_size();
+				// Can this be non-blocking ?
+				sc.send(SYS_sendto, {socket, buffer_ptr,
+				                     response_size,
+						     0, addr, address_len});
 			}
 		}
 	}).wait();
