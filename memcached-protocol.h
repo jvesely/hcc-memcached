@@ -35,7 +35,7 @@ public:
 		ERROR, CLIENT_ERROR, GET, GETS, SET, ADD, REPLACE, APPEND, PREPEND, CAS, DELETE
 	};
 private:
-        mc_cmd cmd_;
+	uint8_t cmd_;
 	bool no_reply_ = false;
 	unsigned flags_ = 0;
 
@@ -46,15 +46,17 @@ private:
 	size_t data_size_ = 0;
 
 
-	memcached_command(mc_cmd cmd) : cmd_(cmd) {};
+	memcached_command(mc_cmd cmd) __HC__ __CPU__ : cmd_(cmd) {};
 	memcached_command(mc_cmd cmd, const char *key, size_t key_size,
 	                  unsigned flags = 0, bool no_reply = false,
 	                  const char *data = nullptr, size_t data_size = 0)
+		__HC__ __CPU__
 		: cmd_(cmd), no_reply_(no_reply), flags_(flags),
 	          key_(key), key_size_(key_size),
        		  data_(data), data_size_(data_size) {};
 public:
-	static memcached_command get_error()
+	~memcached_command() __HC__ __CPU__ {};
+	static memcached_command get_error() __HC__ __CPU__
 	{ return memcached_command(ERROR); }
 
 	static memcached_command get_client_error(const char* str, size_t size)
@@ -65,8 +67,8 @@ public:
 	const char * get_cmd_string() const;
 	unsigned get_flags() const
 	{ return flags_; }
-	mc_cmd get_cmd() const
-	{ return cmd_; };
+	mc_cmd get_cmd() const __HC__ __CPU__
+	{ return (mc_cmd)cmd_; };
 	::std::string get_key() const
 	{ return ::std::string(key_, key_size_); }// This creates a copy
 	::std::vector<char> get_data() const
