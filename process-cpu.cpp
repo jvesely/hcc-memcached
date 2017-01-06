@@ -2,6 +2,7 @@
 
 #include "memcached-protocol.h"
 #include "packet-stream.h"
+#include "rwlock.h"
 
 #include <chrono>
 #include <deque>
@@ -16,7 +17,7 @@
 
 // temporary
 static ::std::unordered_map<::std::string, ::std::vector<char>> storage_;
-static ::std::mutex storage_lock_;
+static rwlock storage_lock_;
 
 static void cpu_process(const params *p)
 {
@@ -47,12 +48,13 @@ static void cpu_process(const params *p)
 		memcached_command cmd =
 			memcached_command::parse_udp(buffer.data(), data_len);
 		if (cmd.get_cmd() == memcached_command::SET) {
-			::std::lock_guard<::std::mutex> l(storage_lock_);
+			storage_lock_.write_lock();
 			storage_[cmd.get_key()] = cmd.get_data();
+			storage_lock_.write_unlock();
 			packet << "STORED\r\n";
 		} else
 		if (cmd.get_cmd() == memcached_command::GET) {
-			::std::lock_guard<::std::mutex> l(storage_lock_);
+			storage_lock_.read_lock();
 			auto it = storage_.find(cmd.get_key());
 			if (it == storage_.end()) {
 				packet << "NOT_FOUND\r\n";
@@ -64,6 +66,7 @@ static void cpu_process(const params *p)
 				packet << "\r\n" << it->second;
 				packet << "\r\nEND\r\n";
 			}
+			storage_lock_.read_unlock();
 		} else {
 			::std::cout << cmd << ::std::endl;
 			packet << "ERROR\r\n";
