@@ -2,6 +2,7 @@
 
 #include "memcached-protocol.h"
 #include "packet-stream.h"
+#include "rwlock.h"
 
 #include <hc.hpp>
 #include <hc_syscalls.h>
@@ -19,6 +20,7 @@ int async_process_gpu(const params *p)
 	uint64_t addr = (uint64_t)&address;
 	uint64_t socket = p->gpu_socket;
 	socklen_t address_len = sizeof(address);
+	rwlock lock;
 
 	unsigned groups = (20480 / p->bucket_size);
 	using buffer_t = ::std::vector<char>;
@@ -84,15 +86,19 @@ int async_process_gpu(const params *p)
 				continue;
 
 			// implement lookup
+			lock.read_lock();
 			bool found = false;
 			if (found) {
 				any_found = true;
 				// TODO generate response
+				lock.read_unlock();
 				response_size += packet.get_size();
 				// Can this be non-blocking ?
 				sc.send(SYS_sendto, {socket, buffer_ptr,
 				                     response_size,
 						     0, addr, address_len});
+			} else {
+				lock.read_unlock();
 			}
 			idx.barrier.wait_with_tile_static_memory_fence();
 			if (idx.local[0] == 0 && !any_found) {

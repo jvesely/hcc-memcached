@@ -27,7 +27,7 @@ public:
 		lock_ &= ~WRITE_LOCK;
 	}
 
-	void read_lock()
+	void read_lock() __HC__ __CPU__
 	{
 		unsigned val = 0;
 		do {
@@ -41,7 +41,7 @@ public:
 		} while (val > WRITE_LOCK);
 	}
 
-	void read_unlock()
+	void read_unlock() __HC__ __CPU__
 	{
 		lock_--;
 	}
