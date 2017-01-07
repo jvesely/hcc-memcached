@@ -17,8 +17,6 @@
 #include <netinet/in.h>
 
 // temporary
-static ::std::unordered_map<::std::string, ::std::vector<char>> storage_;
-static rwlock storage_lock_;
 
 static void cpu_process(const params *p, hash_table *storage)
 {
@@ -49,25 +47,28 @@ static void cpu_process(const params *p, hash_table *storage)
 		memcached_command cmd =
 			memcached_command::parse_udp(buffer.data(), data_len);
 		if (cmd.get_cmd() == memcached_command::SET) {
-			storage_lock_.write_lock();
-			storage_[cmd.get_key()] = cmd.get_data();
-			storage_lock_.write_unlock();
+			storage->insert(cmd.get_key(), cmd.get_data());
 			packet << "STORED\r\n";
 		} else
 		if (cmd.get_cmd() == memcached_command::GET) {
-			storage_lock_.read_lock();
-			auto it = storage_.find(cmd.get_key());
-			if (it == storage_.end()) {
+			::std::string key = cmd.get_key();
+			auto &bucket = storage->get_bucket(key);
+			bucket.read_lock();
+			bool found = false;
+			for (const auto &e : bucket.get_element_array())
+				if (e.key == key) {
+					found = true;
+					packet << "VALUE " << key;
+					packet << " 0"; //ignore flags
+					packet << " ";
+					packet << (uint16_t)e.data.size();
+					packet << "\r\n" << e.data;
+					packet << "\r\nEND\r\n";
+					break;
+				}
+			bucket.read_unlock();
+			if (!found)
 				packet << "NOT_FOUND\r\n";
-			} else {
-				packet << "VALUE " << it->first;
-				packet << " 0"; //ignore flags
-				packet << " ";
-				packet << (uint16_t)it->second.size();
-				packet << "\r\n" << it->second;
-				packet << "\r\nEND\r\n";
-			}
-			storage_lock_.read_unlock();
 		} else {
 			::std::cout << cmd << ::std::endl;
 			packet << "ERROR\r\n";
