@@ -14,6 +14,7 @@ static const struct option options[] = {
 	{"cpu-threads", required_argument, NULL, 't'},
 	{"buffer-size", required_argument, NULL, 'b'},
 	{"bucket-size", required_argument, NULL, 's'},
+	{"bucket-count", required_argument, NULL, 'n'},
 	{"verbose", no_argument, NULL, 'v'},
 	{"help", no_argument, NULL, 'h'},
 	{NULL, }
@@ -51,7 +52,7 @@ int main(int argc, char *argv[])
 	params p;
 	char c;
 	opterr = 0;
-	while ((c = getopt_long(argc, argv, "c:g:b:t:s:vh", options, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "c:g:b:t:s:n:vh", options, NULL)) != -1) {
 		switch (c) {
 		case 'c':
 			p.open_cpu_socket(::std::stoi(optarg));
@@ -67,6 +68,9 @@ int main(int argc, char *argv[])
 			break;
 		case 's':
 			p.bucket_size = ::std::stoi(optarg);
+			break;
+		case 'n':
+			p.bucket_count = ::std::stoi(optarg);
 			break;
 		case 'v':
 			p.verbose = true;
