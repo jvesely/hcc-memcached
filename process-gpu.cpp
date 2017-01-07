@@ -20,7 +20,6 @@ int async_process_gpu(const params *p, hash_table *storage)
 	uint64_t addr = (uint64_t)&address;
 	uint64_t socket = p->gpu_socket;
 	socklen_t address_len = sizeof(address);
-	rwlock lock;
 
 	unsigned groups = (20480 / p->bucket_size);
 	using buffer_t = ::std::vector<char>;
@@ -60,9 +59,10 @@ int async_process_gpu(const params *p, hash_table *storage)
 			volatile tile_static uint64_t key_begin;
 			volatile tile_static uint64_t key_end;
 			volatile tile_static bool any_found;
+			// This is an ugly workaround
+			const char *begin = buffer.data() + 12;
 			if (idx.local[0] == 0) {
 				any_found = false;
-				const char *begin = buffer.data() + 12;
 				// work around HCC bugs. end will be nullptr
 				// if the command is not "get"
 				const char *end =
@@ -85,20 +85,33 @@ int async_process_gpu(const params *p, hash_table *storage)
 			if (key_begin >= key_end)
 				continue;
 
-			// implement lookup
-			lock.read_lock();
+			size_t key_size = key_end - key_begin;
 			bool found = false;
+			auto &bucket = storage->get_bucket(begin,
+			                                   key_end-key_begin);
+			bucket.read_lock();
+			const auto &e =
+				bucket.get_element_array()[idx.local[0]];
+			if (0 == ::std::strncmp(e.key.data(), begin,
+			                        ::std::min(e.key.size(),
+			                                   key_size))) {
+					found = true;
+					packet << "VALUE " << e.key;
+					packet << " 0"; //ignore flags
+					packet << " ";
+					packet << (uint16_t)e.data.size();
+					packet << "\r\n" << e.data;
+					packet << "\r\nEND\r\n";
+			}
+			bucket.read_unlock();
 			if (found) {
 				any_found = true;
 				// TODO generate response
-				lock.read_unlock();
 				response_size += packet.get_size();
 				// Can this be non-blocking ?
 				sc.send(SYS_sendto, {socket, buffer_ptr,
 				                     response_size,
 						     0, addr, address_len});
-			} else {
-				lock.read_unlock();
 			}
 			idx.barrier.wait_with_tile_static_memory_fence();
 			if (idx.local[0] == 0 && !any_found) {
