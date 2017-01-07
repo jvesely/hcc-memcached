@@ -3,6 +3,7 @@
 #include "memcached-protocol.h"
 #include "packet-stream.h"
 #include "rwlock.h"
+#include "hash_table.h"
 
 #include <chrono>
 #include <deque>
@@ -19,7 +20,7 @@
 static ::std::unordered_map<::std::string, ::std::vector<char>> storage_;
 static rwlock storage_lock_;
 
-static void cpu_process(const params *p)
+static void cpu_process(const params *p, hash_table *storage)
 {
 	int socket = p->cpu_socket;
 	const ::std::atomic_uint *on = &p->on_switch;
@@ -76,11 +77,11 @@ static void cpu_process(const params *p)
 	}
 }
 
-int async_process_cpu(const params *p)
+int async_process_cpu(const params *p, hash_table *storage)
 {
 	::std::deque<::std::thread> threads;
 	while (threads.size() < p->thread_count)
-		threads.push_back(::std::thread(cpu_process, p));
+		threads.push_back(::std::thread(cpu_process, p, storage));
 	::std::cout << "Launched " << threads.size() << " CPU threads\n";
 	for (auto &t: threads)
 		t.join();

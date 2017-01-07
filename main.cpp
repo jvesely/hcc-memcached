@@ -91,10 +91,11 @@ int main(int argc, char *argv[])
 		::std::cerr << "Invalid configuration: " << p << ::std::endl;
 		return 1;
 	}
+	hash_table h(p.bucket_count, p.bucket_size);
 	p.on_switch = 1;
 	::std::cout << "Running " << argv[0] << " " << p << ::std::endl;
-	auto cpu = ::std::async(::std::launch::async, async_process_cpu, &p);
-	auto gpu = ::std::async(::std::launch::async, async_process_gpu, &p);
+	auto cpu = ::std::async(::std::launch::async, async_process_cpu, &p, &h);
+	auto gpu = ::std::async(::std::launch::async, async_process_gpu, &p, &h);
 	::std::cout << "Press any key to exit...\n";
 	getchar();
 	p.on_switch = 0;

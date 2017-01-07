@@ -2,7 +2,7 @@
 
 #include "memcached-protocol.h"
 #include "packet-stream.h"
-#include "rwlock.h"
+#include "hash_table.h"
 
 #include <hc.hpp>
 #include <hc_syscalls.h>
@@ -11,7 +11,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-int async_process_gpu(const params *p)
+int async_process_gpu(const params *p, hash_table *storage)
 {
 	// HCC is bad with global variables
 	auto &sc = syscalls::get();

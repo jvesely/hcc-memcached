@@ -10,6 +10,8 @@
 #include <hc.hpp>
 #endif
 
+#include "hash_table.h"
+
 
 struct params {
 	size_t buffer_size = 4096;
@@ -64,5 +66,5 @@ static inline ::std::ostream & operator << (::std::ostream &O, const params &p)
 #  endif
 #endif
 
-int async_process_cpu(const params *p);
-int async_process_gpu(const params *p);
+int async_process_cpu(const params *p, hash_table *storage);
+int async_process_gpu(const params *p, hash_table *storage);
