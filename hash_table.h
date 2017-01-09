@@ -29,11 +29,23 @@ public:
 	            const ::std::vector<char> &&data)
 	{
 		lock_.write_lock();
-		assert(next_insert_ < elements_.size());
-		auto &ref = elements_[next_insert_++];
-		ref.key = ::std::move(key);
-		ref.data = ::std::move(data);
-		next_insert_ %= elements_.size();
+		element *place = nullptr;
+
+		// find entry if key exists
+		for (auto &e : elements_) {
+			if (e.key == key) {
+				place = &e;
+				break;
+			}
+		}
+
+		if (place == nullptr) {
+			assert(next_insert_ < elements_.size());
+			place = &elements_[next_insert_++];
+			next_insert_ %= elements_.size();
+		}
+		place->key = ::std::move(key);
+		place->data = ::std::move(data);
 		lock_.write_unlock();
 	}
 
