@@ -11,6 +11,15 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+extern "C" void __hsa_vcache_wbinvl1_vol(void)[[hc]];
+extern "C" void __hsa_dcache_inv(void)[[hc]];
+
+void cache_invalidate_l1()[[hc]]
+{
+	__hsa_vcache_wbinvl1_vol();
+	__hsa_dcache_inv();
+}
+
 int async_process_gpu(const params *p, hash_table *storage)
 {
 	// HCC is bad with global variables
@@ -55,6 +64,9 @@ int async_process_gpu(const params *p, hash_table *storage)
 			idx.barrier.wait_with_tile_static_memory_fence();
 			if (data_len > buffer.size())
 				continue;
+
+			// Make sure we read the most up to date data
+			cache_invalidate_l1();
 
 			volatile tile_static uint64_t key_begin;
 			volatile tile_static uint64_t key_end;
