@@ -104,9 +104,8 @@ int async_process_gpu(const params *p, hash_table *storage)
 			bucket.read_lock();
 			const auto &e =
 				bucket.get_element_array()[idx.local[0]];
-			if (0 == ::std::strncmp(e.key.data(), begin,
-			                        ::std::min(e.key.size(),
-			                                   key_size))) {
+			if (e.key.size() == key_size &&
+			    0 == ::std::strncmp(e.key.data(), begin, key_size)) {
 					found = true;
 					packet << "VALUE " << e.key;
 					packet << " 0"; //ignore flags
@@ -118,7 +117,6 @@ int async_process_gpu(const params *p, hash_table *storage)
 			bucket.read_unlock();
 			if (found) {
 				any_found = true;
-				// TODO generate response
 				response_size += packet.get_size();
 				// Can this be non-blocking ?
 				sc.send(SYS_sendto, {socket, buffer_ptr,
