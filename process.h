@@ -30,7 +30,8 @@ struct params {
 	bool isValid() const
 	{ return (cpu_socket != -1 || gpu_socket != -1) && buffer_size > 0
 	         && (bucket_size <= 1024) && (bucket_size > 0)
-	         && (bucket_size % 64 == 0) && (bucket_count > 0); }
+	         && (bucket_size % 64 == 0 || bucket_size < 64)
+	         && (bucket_count > 0); }
 
 	static void open_udp_socket(int &socket, int port);
 
