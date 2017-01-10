@@ -14,20 +14,21 @@ int async_process_gpu(const params *p)
 	// HCC is bad with global variables
 	auto &sc = syscalls::get();
 
-	struct sockaddr_in address = {0};
-	uint64_t addr = (uint64_t)&address;
 	uint64_t socket = p->gpu_socket;
-	socklen_t address_len = sizeof(address);
 
 	unsigned groups = (20480 / p->bucket_size);
 	using buffer_t = ::std::vector<char>;
 	::std::vector<buffer_t> buffers(groups, buffer_t(p->buffer_size));
+	::std::vector<struct sockaddr_in> addresses(groups);
+	socklen_t address_len = sizeof(struct sockaddr_in);
 
 	auto textent = hc::extent<1>::extent(p->bucket_size).tile(p->bucket_size);
 	parallel_for_each(textent, [&](hc::tiled_index<1> idx) [[hc]] {
 		buffer_t &buffer = buffers[idx.tile[0]];
+		uint64_t addr = (uint64_t)&addresses[idx.tile[0]];
+
 		while (p->on_switch) {
-			address_len = sizeof(address);
+			address_len = sizeof(struct sockaddr_in);
 			volatile tile_static ssize_t data_len;
 			if (idx.local[0] == 0) {
 				data_len = sc.send(SYS_recvfrom,
