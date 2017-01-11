@@ -92,6 +92,7 @@ int async_process_gpu(const params *p, hash_table *storage)
 							     0, addr,
 					                     address_len});
 				}
+
 			}
 			idx.barrier.wait_with_tile_static_memory_fence();
 			if (key_begin >= key_end)
@@ -106,13 +107,13 @@ int async_process_gpu(const params *p, hash_table *storage)
 				bucket.get_element_array()[idx.local[0]];
 			if (e.key.size() == key_size &&
 			    0 == ::std::strncmp(e.key.data(), begin, key_size)) {
-					found = true;
-					packet << "VALUE " << e.key;
-					packet << " 0"; //ignore flags
-					packet << " ";
-					packet << (uint16_t)e.data.size();
-					packet << "\r\n" << e.data;
-					packet << "\r\nEND\r\n";
+				found = true;
+				packet << "VALUE " << e.key;
+				packet << " 0"; //ignore flags
+				packet << " ";
+				packet << (uint16_t)e.data.size();
+				packet << "\r\n" << e.data;
+				packet << "\r\nEND\r\n";
 			}
 			bucket.read_unlock();
 			if (found) {
@@ -123,7 +124,9 @@ int async_process_gpu(const params *p, hash_table *storage)
 				                     response_size,
 						     0, addr, address_len});
 			}
+
 			idx.barrier.wait_with_tile_static_memory_fence();
+
 			if (idx.local[0] == 0 && !any_found) {
 				packet << "NOT FOUND\r\n";
 				response_size += packet.get_size();
