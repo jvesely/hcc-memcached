@@ -83,7 +83,7 @@ int async_process_gpu(const params *p, hash_table *storage)
 
 				key_begin = (uint64_t)begin;
 				key_end = (uint64_t)end;
-				if (begin == nullptr || end == nullptr) {
+				if (key_begin >= key_end) {
 					packet << "ERROR\r\n";
 					response_size += packet.get_size();
 					sc.send(SYS_sendto, {socket,
