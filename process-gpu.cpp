@@ -62,7 +62,7 @@ int async_process_gpu(const params *p, hash_table *storage)
 			}
 
 			idx.barrier.wait_with_tile_static_memory_fence();
-			if (data_len > buffer.size())
+			if (data_len > buffer.size() || data_len < 0)
 				continue;
 
 			// Make sure we read the most up to date data
