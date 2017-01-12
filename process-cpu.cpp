@@ -51,11 +51,17 @@ static void cpu_process(const params *p, hash_table *storage)
 			storage->insert(cmd.get_key(), cmd.get_value());
 			if (p->verbose)
 				::std::cerr << "STORED " << cmd.get_key()
-				            << " : " << cmd.get_value() << "\n";
+				            << " (" << cmd.get_key().size()
+					    << ") : " << cmd.get_value()
+				            << " (" << cmd.get_value().size()
+				            << ")\n";
 			response_size = cmd.set_response(mc_binary_header::RE_OK);
 		} else
 		if (cmd.get_cmd() == mc_binary_header::OP_GET) {
 			::std::string key = cmd.get_key();
+			if (p->verbose)
+				::std::cerr << "Looking for: " << key << " ("
+				            << key.size() << ")\n";
 			auto &bucket = storage->get_bucket(key);
 			bucket.read_lock();
 			bool found = false;
