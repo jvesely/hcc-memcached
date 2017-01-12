@@ -3,23 +3,14 @@
 #include "hc-std-helpers.h"
 #include <iostream>
 
-::std::ostream & operator << (::std::ostream &O, const mc_header &h)
-{
-	O << ::std::hex << "<" << (unsigned)h.magic
-	  << ", " << (unsigned)h.opcode
-	  << ", " << (unsigned)h.extras_size << ", " << (unsigned)h.data_type
-	  << ", " << h.status << ", " << h.total_size
-	  << ", " << h.cas << ">";
-	return O;
-}
-
+// This needs to be kept above operator <<. Otherwise hcc complains.
 udp_header udp_header::parse(const char data[8])
 {
-// assume little endina for now
+	// assume little endian for now
 	udp_header ret {
-		.request_id = (unsigned)(data[1] << 8 | data[0]),
-		.sequence_number = (unsigned)(data[3] << 8 | data[2]),
-		.dgram_count = (unsigned)(data[4] << 8u | data[5]),
+		.request_id = (uint16_t)(data[1] << 8 | data[0]),
+		.sequence_number = (uint16_t)(data[3] << 8 | data[2]),
+		.dgram_count = (uint16_t)(data[4] << 8u | data[5]),
 	};
 	return ret;
 }
@@ -29,6 +20,26 @@ udp_header udp_header::parse(const char data[8])
 	O << "<" << h.request_id << "," << h.sequence_number
 	  << "," << h.dgram_count << ">";
 	return O;
+}
+
+::std::ostream & operator << (::std::ostream &O, const mc_binary_header &h)
+{
+	O << ::std::hex << "<" << (unsigned)h.magic
+	  << ", " << (unsigned)h.opcode
+	  << ", " << (unsigned)h.extras_size << ", " << (unsigned)h.data_type
+	  << ", " << ::std::ntoh(h.status) << ", " << ::std::ntoh(h.total_size)
+	  << ", " << h.cas << ">";
+	return O;
+}
+
+::std::ostream & operator << (::std::ostream &O, const mc_binary_packet &p)
+{
+	if (p.isValid()) {
+		if (p.udp_header_)
+			O << *p.udp_header_;
+		return O << *p.header_;
+	}
+	return O << "Invalid binary packet!!!";
 }
 
 static const char *next_char(const char *data, size_t size, char c) __HC__ __CPU__
