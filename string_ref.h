@@ -10,7 +10,13 @@ class string_ref
 	const char *ptr_;
 	size_t size_;
 public:
-	string_ref(const char *ptr, size_t size) : ptr_(ptr), size_(size) {};
+	string_ref(const char *ptr, size_t size) __HC__ __CPU__ : ptr_(ptr), size_(size) {};
+
+	const char *data() const __HC__ __CPU__
+	{ return ptr_; }
+
+	size_t size() const __HC__ __CPU__
+	{ return size_; }
 
 	// Copies data
 	operator ::std::string() const

@@ -71,11 +71,11 @@ public:
 	bool isValid() const
 	{ return header_; }
 
-	mc_binary_header::opcode_t get_cmd() const
+	mc_binary_header::opcode_t get_cmd() const __CPU__ __HC__
 	{ return header_ ? (mc_binary_header::opcode_t)header_->opcode
 	                 : mc_binary_header::OP_ERROR; }
 
-	string_ref get_key() const
+	string_ref get_key() const __CPU__ __HC__
 	{ return string_ref(data_ + ::std::ntoh(header_->extras_size),
 	                    ::std::ntoh(header_->key_size)); }
 
@@ -90,7 +90,7 @@ public:
 
 	size_t set_response(mc_binary_header::response_t response,
 	                    const ::std::string &key = "",
-	                    const ::std::vector<char> &value = ::std::vector<char>() )
+	                    const ::std::vector<char> &value = ::std::vector<char>() )  __CPU__
 	{
 		header_->magic = mc_binary_header::MAGIC_RESPONSE;
 		header_->key_size = ::std::hton<uint16_t>(key.size());
@@ -98,6 +98,32 @@ public:
 		header_->status = ::std::hton<uint16_t>(response);
 		header_->total_size = ::std::hton<uint32_t>(key.size() + value.size());
 		key.copy(data_, key.size());
+		::std::memcpy(data_ + key.size(), value.data(), value.size());
+		return (udp_header_ ? sizeof(*udp_header_) : 0) +
+			sizeof(*header_) + key.size() + value.size();
+	}
+
+	size_t set_response(mc_binary_header::response_t response) __HC__
+	{
+		header_->magic = mc_binary_header::MAGIC_RESPONSE;
+		header_->key_size = 0;
+		header_->extras_size = 0;
+		header_->status = ::std::hton<uint16_t>(response);
+		header_->total_size = 0;
+		return (udp_header_ ? sizeof(*udp_header_) : 0) +
+			sizeof(*header_);
+	}
+
+	size_t set_response(mc_binary_header::response_t response,
+	                    const ::std::string &key,
+	                    const ::std::vector<char> &value)  __HC__
+	{
+		header_->magic = mc_binary_header::MAGIC_RESPONSE;
+		header_->key_size = ::std::hton<uint16_t>(key.size());
+		header_->extras_size = 0;
+		header_->status = ::std::hton<uint16_t>(response);
+		header_->total_size = ::std::hton<uint32_t>(key.size() + value.size());
+		::std::memcpy(data_ , key.data(), key.size());
 		::std::memcpy(data_ + key.size(), value.data(), value.size());
 		return (udp_header_ ? sizeof(*udp_header_) : 0) +
 			sizeof(*header_) + key.size() + value.size();
