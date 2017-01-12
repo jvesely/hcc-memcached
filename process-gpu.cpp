@@ -22,6 +22,8 @@ void cache_invalidate_l1()[[hc]]
 
 int async_process_gpu(const params *p, hash_table *storage)
 {
+	if (p->gpu_socket < 0)
+		return -1;
 	// HCC is bad with global variables
 	auto &sc = syscalls::get();
 
