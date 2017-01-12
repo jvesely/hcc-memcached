@@ -4,6 +4,9 @@
 #include "packet-stream.h"
 #include "hash_table.h"
 
+#include <iostream>
+#include <numeric>
+
 #include <hc.hpp>
 #include <hc_syscalls.h>
 #include <sys/syscall.h>
@@ -35,6 +38,8 @@ int async_process_gpu(const params *p, hash_table *storage)
 	::std::vector<struct sockaddr_in> addresses(groups);
 	socklen_t address_len = sizeof(struct sockaddr_in);
 
+	::std::vector<size_t> packets(groups);
+
 	auto textent = hc::extent<1>::extent(p->bucket_size).tile(p->bucket_size);
 	parallel_for_each(textent, [&](hc::tiled_index<1> idx) [[hc]] {
 		buffer_t &buffer = buffers[idx.tile[0]];
@@ -55,6 +60,8 @@ int async_process_gpu(const params *p, hash_table *storage)
 			                            (uint64_t)&address_len});
 				// Make sure we read the most up to date data
 				cache_invalidate_l1();
+				if (data_len > 0)
+					++packets[idx.tile[0]];
 			}
 			mc_binary_packet cmd = mc_binary_packet::parse_udp(
 				buffer.data(), ::std::min<size_t>(buffer.size(), data_len));
@@ -62,6 +69,7 @@ int async_process_gpu(const params *p, hash_table *storage)
 			idx.barrier.wait_with_tile_static_memory_fence();
 			if (data_len <= 0) //error receiving data
 				continue;
+
 			if (data_len > buffer.size()) { //truncated
 				if (idx.local[0] == 0) {
 					response_size = cmd.set_response(
@@ -121,5 +129,11 @@ int async_process_gpu(const params *p, hash_table *storage)
 			}
 		}
 	}).wait();
+	for (size_t i = 0; i < packets.size(); ++i)
+		::std::cout << "GPU group " << i << " processed "
+		            << packets[i] << " packets.\n";
+	::std::cout << "All groups processed "
+	            << ::std::accumulate(packets.begin(), packets.end(), 0)
+	            << " packets\n";
 	return 0;
 }
