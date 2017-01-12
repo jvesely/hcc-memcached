@@ -101,6 +101,18 @@ int async_process_gpu(const params *p, hash_table *storage)
 
 
 			string_ref key = cmd.get_key();
+			if (key.size() > (buffer.size() - 32)) {
+				if (is_lead) {
+					response_size = cmd.set_response(
+						mc_binary_header::RE_INTERNAL_ERROR);
+					sc.send(SYS_sendto, {socket,
+					                     buffer_ptr,
+					                     response_size,
+							     0, addr,
+					                     address_len[tlid]});
+				}
+				continue;
+			}
 
 			bool found = false;
 			auto &bucket = storage->get_bucket(key.data(),
