@@ -23,6 +23,11 @@ void cache_invalidate_l1()[[hc]]
 	__hsa_dcache_inv();
 }
 
+void print_error(syscalls &sc, const ::std::string &m) __HC__
+{
+	sc.send(SYS_write, {2, (uint64_t)m.c_str(), m.size()});
+}
+
 int async_process_gpu(const params *p, hash_table *storage)
 {
 	if (p->gpu_socket < 0)
@@ -34,17 +39,26 @@ int async_process_gpu(const params *p, hash_table *storage)
 
 	unsigned groups = (20480 / p->bucket_size);
 	using buffer_t = ::std::vector<char>;
-	::std::vector<buffer_t> buffers(groups, buffer_t(p->buffer_size));
 	::std::vector<struct sockaddr_in> addresses(groups);
+	::std::vector<buffer_t> buffers(groups, buffer_t(p->buffer_size));
 	::std::vector<socklen_t> address_len(groups, sizeof(struct sockaddr_in));
 
 	::std::vector<size_t> packets(groups, 0);
+	::std::string e_no_buffer("Buffer pointer is zero\n");
+	::std::string e_truncated("Request packet truncated\n");
+	::std::string e_notget("Unsupported operation\n");
+	::std::string e_corrupted("Reuqest packet corrupt\n");
 
 	auto textent = hc::extent<1>::extent(groups * p->bucket_size).tile(p->bucket_size);
 	parallel_for_each(textent, [&](hc::tiled_index<1> idx) [[hc]] {
 		buffer_t &buffer = buffers[idx.tile[0]];
 		uint64_t buffer_ptr = (uint64_t)buffer.data();
 		uint64_t addr = (uint64_t)&addresses[idx.tile[0]];
+		if (buffer.data() == nullptr ||
+		    buffer.size() != p->buffer_size) {
+			print_error(sc, e_no_buffer);
+			return;
+		}
 
 		volatile tile_static ssize_t data_len;
 		volatile tile_static bool any_found;
@@ -76,6 +90,7 @@ int async_process_gpu(const params *p, hash_table *storage)
 
 			if (data_len > buffer.size()) { //truncated
 				if (is_lead) {
+					print_error(sc, e_truncated);
 					response_size = cmd.set_response(
 						mc_binary_header::RE_VALUE_TOO_LARGE);
 					sc.send(SYS_sendto, {socket,
@@ -88,6 +103,7 @@ int async_process_gpu(const params *p, hash_table *storage)
 			}
 			if (cmd.get_cmd() != mc_binary_header::OP_GET) {
 				if (is_lead) {
+					print_error(sc, e_notget);
 					response_size = cmd.set_response(
 						mc_binary_header::RE_NOT_SUPPORTED);
 					sc.send(SYS_sendto, {socket,
@@ -100,9 +116,12 @@ int async_process_gpu(const params *p, hash_table *storage)
 			}
 
 
+			char * buffer_end = buffer.data() + buffer.size();
 			string_ref key = cmd.get_key();
-			if (key.size() > (buffer.size() - 32)) {
+			if (key.data() > buffer_end ||
+			    (key.data() + key.size()) > buffer_end) {
 				if (is_lead) {
+					print_error(sc, e_corrupted);
 					response_size = cmd.set_response(
 						mc_binary_header::RE_INTERNAL_ERROR);
 					sc.send(SYS_sendto, {socket,
