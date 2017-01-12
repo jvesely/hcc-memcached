@@ -61,6 +61,8 @@ int async_process_gpu(const params *p, hash_table *storage)
 				buffer.data(), ::std::min<size_t>(buffer.size(), data_len));
 
 			idx.barrier.wait_with_tile_static_memory_fence();
+			if (data_len <= 0) //error receiving data
+				continue;
 			if (data_len > buffer.size()) { //truncated
 				if (idx.local[0] == 0) {
 					response_size = cmd.set_response(
