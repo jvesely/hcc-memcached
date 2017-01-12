@@ -50,7 +50,8 @@ static void cpu_process(const params *p, hash_table *storage)
 		if (cmd.get_cmd() == mc_binary_header::OP_SET) {
 			storage->insert(cmd.get_key(), cmd.get_value());
 			if (p->verbose)
-				::std::cerr << "STORED " << cmd.get_key() << "\n";
+				::std::cerr << "STORED " << cmd.get_key()
+				            << " : " << cmd.get_value() << "\n";
 			response_size = cmd.set_response(mc_binary_header::RE_OK);
 		} else
 		if (cmd.get_cmd() == mc_binary_header::OP_GET) {
@@ -60,7 +61,10 @@ static void cpu_process(const params *p, hash_table *storage)
 			bool found = false;
 			for (const auto &e : bucket.get_element_array())
 				if (e.key == key) {
-//					found = true;
+					found = true;
+					response_size = cmd.set_response(
+						mc_binary_header::RE_OK, e.key,
+						e.data);
 					break;
 				}
 			bucket.read_unlock();
