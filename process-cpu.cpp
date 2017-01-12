@@ -34,46 +34,46 @@ static void cpu_process(const params *p, hash_table *storage)
 		if (data_len == 0) //spurious return
 			continue;
 
-		size_t response_size = 8;
-		packet_stream packet(buffer.data() + 8, buffer.size() - 8);
+		size_t response_size = 0;
 
+		mc_binary_packet cmd = mc_binary_packet::parse_udp(
+			buffer.data(), ::std::min(data_len, buffer.size()));
+		if (p->verbose)
+			::std::cerr << cmd << "\n";
 		if (data_len > buffer.size()) { // truncated
-			packet << "CLIENT ERROR 'too big'\r\n";
-			response_size += packet.get_size();
+			response_size = cmd.set_response(
+				mc_binary_header::RE_VALUE_TOO_LARGE);
 			sendto(socket, buffer.data(), response_size, 0, addr, address_len);
 			continue;
 		}
 
-		memcached_command cmd =
-			memcached_command::parse_udp(buffer.data(), data_len);
-		if (cmd.get_cmd() == memcached_command::SET) {
-			storage->insert(cmd.get_key(), cmd.get_data());
-			packet << "STORED\r\n";
+		if (cmd.get_cmd() == mc_binary_header::OP_SET) {
+			storage->insert(cmd.get_key(), cmd.get_value());
+			if (p->verbose)
+				::std::cerr << "STORED " << cmd.get_key() << "\n";
+			response_size = cmd.set_response(mc_binary_header::RE_OK);
 		} else
-		if (cmd.get_cmd() == memcached_command::GET) {
+		if (cmd.get_cmd() == mc_binary_header::OP_GET) {
 			::std::string key = cmd.get_key();
 			auto &bucket = storage->get_bucket(key);
 			bucket.read_lock();
 			bool found = false;
 			for (const auto &e : bucket.get_element_array())
 				if (e.key == key) {
-					found = true;
-					packet << "VALUE " << key;
-					packet << " 0"; //ignore flags
-					packet << " ";
-					packet << (uint16_t)e.data.size();
-					packet << "\r\n" << e.data;
-					packet << "\r\nEND\r\n";
+//					found = true;
 					break;
 				}
 			bucket.read_unlock();
 			if (!found)
-				packet << "NOT_FOUND\r\n";
+				response_size = cmd.set_response(
+					mc_binary_header::RE_NOT_FOUND);
 		} else {
-			::std::cout << cmd << ::std::endl;
-			packet << "ERROR\r\n";
+			::std::cerr << "Unknown command: " << cmd << ::std::endl;
+			response_size = cmd.set_response(
+				mc_binary_header::RE_NOT_SUPPORTED);
 		}
-		response_size += packet.get_size();
+		if (p->verbose)
+			::std::cerr <<cmd << "\n";
 		sendto(socket, buffer.data(), response_size, 0, addr, address_len);
 	}
 }
