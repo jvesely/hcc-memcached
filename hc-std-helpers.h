@@ -1,9 +1,31 @@
 #pragma once
 
 #include <hc.hpp>
+#include <arpa/inet.h>
 
 // Provide GPU implementations of basic routines
 namespace std {
+
+	template<typename T>
+	inline T ntoh(T);
+
+	template<> inline uint8_t ntoh(uint8_t v)
+	{ return v; }
+	template<> inline uint16_t ntoh(uint16_t v)
+	{ return ntohs(v); }
+	template<> inline uint32_t ntoh(uint32_t v)
+	{ return ntohl(v); }
+
+	template<typename T>
+	inline T hton(T);
+	template<> inline uint8_t hton(uint8_t v)
+	{ return v; }
+	template<> inline uint16_t hton(uint16_t v)
+	{ return htons(v); }
+	template<> inline uint32_t hton(uint32_t v)
+	{ return htonl(v); }
+
+
 	inline size_t strlen(const char *ch) __HC__
 	{
 		size_t s = 0;
