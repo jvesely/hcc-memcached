@@ -9,6 +9,8 @@
 
 int async_process_gpu(const params *p)
 {
+	if (p->gpu_socket < 0)
+		return -1;
 	// HCC is bad with global variables
 	auto &sc = syscalls::get();
 	::std::vector<char> buffer(p->buffer_size);
