@@ -36,9 +36,9 @@ int async_process_gpu(const params *p, hash_table *storage)
 	using buffer_t = ::std::vector<char>;
 	::std::vector<buffer_t> buffers(groups, buffer_t(p->buffer_size));
 	::std::vector<struct sockaddr_in> addresses(groups);
-	socklen_t address_len = sizeof(struct sockaddr_in);
+	::std::vector<socklen_t> address_len(groups, sizeof(struct sockaddr_in));
 
-	::std::vector<size_t> packets(groups);
+	::std::vector<size_t> packets(groups, 0);
 
 	auto textent = hc::extent<1>::extent(groups * p->bucket_size).tile(p->bucket_size);
 	parallel_for_each(textent, [&](hc::tiled_index<1> idx) [[hc]] {
@@ -46,22 +46,26 @@ int async_process_gpu(const params *p, hash_table *storage)
 		uint64_t buffer_ptr = (uint64_t)buffer.data();
 		uint64_t addr = (uint64_t)&addresses[idx.tile[0]];
 
+		volatile tile_static ssize_t data_len;
+		volatile tile_static bool any_found;
+
+		size_t tlid = idx.tile[0];
+		bool is_lead = (idx.local[0] == 0);
+
 		while (p->on_switch) {
-			address_len = sizeof(struct sockaddr_in);
+			address_len[tlid] = sizeof(struct sockaddr_in);
 			size_t response_size = 0;
-			volatile tile_static ssize_t data_len;
-			volatile tile_static bool any_found;
-			if (idx.local[0] == 0) {
+			if (is_lead) {
 				any_found = false;
 				data_len = sc.send(SYS_recvfrom,
 				                   {socket, buffer_ptr,
 				                    buffer.size(), MSG_TRUNC,
 			                            addr,
-			                            (uint64_t)&address_len});
+			                            (uint64_t)&address_len[tlid]});
 				// Make sure we read the most up to date data
 				cache_invalidate_l1();
 				if (data_len > 0)
-					++packets[idx.tile[0]];
+					++packets[tlid];
 			}
 			mc_binary_packet cmd = mc_binary_packet::parse_udp(
 				buffer.data(), ::std::min<size_t>(buffer.size(), data_len));
@@ -71,26 +75,26 @@ int async_process_gpu(const params *p, hash_table *storage)
 				continue;
 
 			if (data_len > buffer.size()) { //truncated
-				if (idx.local[0] == 0) {
+				if (is_lead) {
 					response_size = cmd.set_response(
 						mc_binary_header::RE_VALUE_TOO_LARGE);
 					sc.send(SYS_sendto, {socket,
 					                     buffer_ptr,
 					                     response_size,
 							     0, addr,
-					                     address_len});
+					                     address_len[tlid]});
 				}
 				continue;
 			}
 			if (cmd.get_cmd() != mc_binary_header::OP_GET) {
-				if (idx.local[0] == 0) {
+				if (is_lead) {
 					response_size = cmd.set_response(
 						mc_binary_header::RE_NOT_SUPPORTED);
 					sc.send(SYS_sendto, {socket,
 					                     buffer_ptr,
 					                     response_size,
 							     0, addr,
-					                     address_len});
+					                     address_len[tlid]});
 				}
 				continue;
 			}
@@ -107,25 +111,32 @@ int async_process_gpu(const params *p, hash_table *storage)
 			if (e.key.size() == key.size() &&
 			    0 == ::std::strncmp(e.key.data(), key.data(), key.size())) {
 				found = true;
+				any_found = true;
 				response_size = cmd.set_response(
 					mc_binary_header::RE_OK, e.key, e.data);
 			}
 			bucket.read_unlock();
 			if (found) {
-				any_found = true;
 				sc.send(SYS_sendto, {socket, buffer_ptr,
 				                     response_size,
-						     0, addr, address_len});
+						     0, addr, address_len[tlid]});
 			}
 
 			idx.barrier.wait_with_tile_static_memory_fence();
 
-			if (idx.local[0] == 0 && !any_found) {
-				response_size = cmd.set_response(
-					mc_binary_header::RE_NOT_FOUND);
-				sc.send(SYS_sendto, {socket, buffer_ptr,
-				                     response_size,
-						     0, addr, address_len});
+			if (!any_found) {
+				// This barrier should prevent hcc from
+				// miscompiling and corrupting the condition
+				// vector
+				idx.barrier.wait();
+				if (is_lead) {
+					response_size = cmd.set_response(
+						mc_binary_header::RE_NOT_FOUND);
+					sc.send(SYS_sendto, {socket, buffer_ptr,
+					                     response_size,
+							     0, addr,
+					                     address_len[tlid]});
+				}
 			}
 		}
 	}).wait();
