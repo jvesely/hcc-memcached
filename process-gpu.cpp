@@ -41,11 +41,12 @@ int async_process_gpu(const params *p, hash_table *storage)
 		uint64_t buffer_ptr = (uint64_t)buffer.data();
 		uint64_t addr = (uint64_t)&addresses[idx.tile[0]];
 
+		volatile tile_static ssize_t data_len;
+		volatile tile_static bool any_found;
+
 		while (p->on_switch) {
 			address_len = sizeof(struct sockaddr_in);
 			size_t response_size = 0;
-			volatile tile_static ssize_t data_len;
-			volatile tile_static bool any_found;
 			if (idx.local[0] == 0) {
 				any_found = false;
 				data_len = sc.send(SYS_recvfrom,
