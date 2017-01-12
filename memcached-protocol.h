@@ -41,8 +41,6 @@ struct udp_header {
 	uint16_t sequence_number;
 	uint16_t dgram_count;
 	uint16_t res_;
-
-	static udp_header parse(const char data[8]) __HC__ __CPU__;
 };
 static_assert(sizeof(udp_header) == 8, "Incorrect udp header struct size");
 

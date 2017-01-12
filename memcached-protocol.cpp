@@ -3,32 +3,23 @@
 #include "hc-std-helpers.h"
 #include <iostream>
 
-// This needs to be kept above operator <<. Otherwise hcc complains.
-udp_header udp_header::parse(const char data[8])
-{
-	// assume little endian for now
-	udp_header ret {
-		.request_id = (uint16_t)(data[1] << 8 | data[0]),
-		.sequence_number = (uint16_t)(data[3] << 8 | data[2]),
-		.dgram_count = (uint16_t)(data[4] << 8u | data[5]),
-	};
-	return ret;
-}
-
 ::std::ostream & operator << (::std::ostream &O, const udp_header &h)
 {
-	O << "<" << h.request_id << "," << h.sequence_number
-	  << "," << h.dgram_count << ">";
+	O << "<" << ::std::ntoh(h.request_id)
+	  << "," << ::std::ntoh(h.sequence_number)
+	  << "," << ::std::ntoh(h.dgram_count)
+	  << ">";
 	return O;
 }
 
 ::std::ostream & operator << (::std::ostream &O, const mc_binary_header &h)
 {
 	O << ::std::hex << "<" << (unsigned)h.magic
-	  << ", " << (unsigned)h.opcode
+	  << ", " << (unsigned)h.opcode << ::std::dec
+	  << ", " << ::std::ntoh(h.key_size)
 	  << ", " << (unsigned)h.extras_size << ", " << (unsigned)h.data_type
 	  << ", " << ::std::ntoh(h.status) << ", " << ::std::ntoh(h.total_size)
-	  << ", " << h.cas << ">";
+	  << ", " << ::std::hex << h.cas << ">" << ::std::dec;
 	return O;
 }
 
@@ -57,8 +48,8 @@ static const char *next_space(const char *data, size_t size) __HC__ __CPU__
 const char *
 memcached_command::parse_get_key_end(const char *data, size_t size) __HC__
 {
-	const udp_header hdr = udp_header::parse(data);
-	if (hdr.dgram_count != 1)
+	const udp_header *hdr = (udp_header*)data;
+	if (::std::ntoh(hdr->dgram_count) != 1)
 		return nullptr;
 	data += 8;
 	size -= 8;
@@ -74,8 +65,8 @@ memcached_command::parse_get_key_end(const char *data, size_t size) __HC__
 
 memcached_command memcached_command::parse_udp(const char *data, size_t size)
 {
-	const udp_header hdr = udp_header::parse(data);
-	if (hdr.dgram_count != 1)
+	const udp_header *hdr = (udp_header*)data;
+	if (::std::ntoh(hdr->dgram_count) != 1)
 		return get_client_error(STR("too many datagrams"));
 
 	data += 8;
