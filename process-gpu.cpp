@@ -40,7 +40,7 @@ int async_process_gpu(const params *p, hash_table *storage)
 
 	::std::vector<size_t> packets(groups);
 
-	auto textent = hc::extent<1>::extent(p->bucket_size).tile(p->bucket_size);
+	auto textent = hc::extent<1>::extent(groups * p->bucket_size).tile(p->bucket_size);
 	parallel_for_each(textent, [&](hc::tiled_index<1> idx) [[hc]] {
 		buffer_t &buffer = buffers[idx.tile[0]];
 		uint64_t buffer_ptr = (uint64_t)buffer.data();
