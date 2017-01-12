@@ -6,40 +6,25 @@
 // Provide GPU implementations of basic routines
 namespace std {
 
-	template<typename T>inline T ntoh(T) __HC__;
-	template<typename T>inline T ntoh(T) __CPU__;
+	template<typename T>inline T ntoh(T) __HC__ __CPU__;
 
-	// AMDGPUs are little endian
-	template<> inline uint8_t ntoh(uint8_t v) __HC__
-	{ return 8; }
-	template<> inline uint16_t ntoh(uint16_t v) __HC__
-	{ return v >> 8 | v << 8; }
-	template<> inline uint32_t ntoh(uint32_t v) __HC__
-	{ return v >> 24 | ((v <<8) >> 24) | ((v<< 16) >> 24) | (v & 0xff); }
-
-	template<> inline uint8_t ntoh(uint8_t v) __CPU__
+	// AMDGPUs and x86 CPUs are little endian
+	template<> inline uint8_t ntoh(uint8_t v) __HC__ __CPU__
 	{ return v; }
-	template<> inline uint16_t ntoh(uint16_t v) __CPU__
-	{ return ntohs(v); }
-	template<> inline uint32_t ntoh(uint32_t v) __CPU__
-	{ return ntohl(v); }
+	template<> inline uint16_t ntoh(uint16_t v) __HC__ __CPU__
+	{ return ((v & 0xff00) >> 8) | ((v & 0xff) << 8); }
+	template<> inline uint32_t ntoh(uint32_t v) __HC__ __CPU__
+	{ return (v >> 24) | ((v & 0xff0000) >> 8) | ((v & 0xff00) << 8) | (v << 24); }
 
-	template<typename T> inline T hton(T) __CPU__;
-	template<typename T> inline T hton(T) __HC__;
-	template<> inline uint8_t hton(uint8_t v) __CPU__
+	template<typename T> inline T hton(T) __CPU__ __HC__;
+
+	// AMDGPUs and x86 CPUs are little endian
+	template<> inline uint8_t hton(uint8_t v) __HC__ __CPU__
 	{ return v; }
-	template<> inline uint16_t hton(uint16_t v) __CPU__
-	{ return htons(v); }
-	template<> inline uint32_t hton(uint32_t v) __CPU__
-	{ return htonl(v); }
-
-	// AMDGPUs are little endian
-	template<> inline uint8_t hton(uint8_t v) __HC__
-	{ return 8; }
-	template<> inline uint16_t hton(uint16_t v) __HC__
-	{ return v >> 8 | v << 8; }
-	template<> inline uint32_t hton(uint32_t v) __HC__
-	{ return v >> 24 | ((v <<8) >> 24) | ((v<< 16) >> 24) | (v & 0xff); }
+	template<> inline uint16_t hton(uint16_t v) __HC__ __CPU__
+	{ return ((v & 0xff00) >> 8) | ((v & 0xff) << 8); }
+	template<> inline uint32_t hton(uint32_t v) __HC__ __CPU__
+	{ return (v >> 24) | ((v & 0xff0000) >> 8) | ((v & 0xff00) << 8) | (v << 24); }
 
 
 	inline size_t strlen(const char *ch) __HC__
