@@ -88,22 +88,7 @@ public:
 	size_t get_size() const
 	{ return header_ ? ::std::ntoh(header_->total_size) : 0 ; }
 
-	size_t set_response(mc_binary_header::response_t response,
-	                    const ::std::string &key = "",
-	                    const ::std::vector<char> &value = ::std::vector<char>() )  __CPU__
-	{
-		header_->magic = mc_binary_header::MAGIC_RESPONSE;
-		header_->key_size = ::std::hton<uint16_t>(key.size());
-		header_->extras_size = 0;
-		header_->status = ::std::hton<uint16_t>(response);
-		header_->total_size = ::std::hton<uint32_t>(key.size() + value.size());
-		key.copy(data_, key.size());
-		::std::memcpy(data_ + key.size(), value.data(), value.size());
-		return (udp_header_ ? sizeof(*udp_header_) : 0) +
-			sizeof(*header_) + key.size() + value.size();
-	}
-
-	size_t set_response(mc_binary_header::response_t response) __HC__
+	size_t set_response(mc_binary_header::response_t response) __HC__ __CPU__
 	{
 		header_->magic = mc_binary_header::MAGIC_RESPONSE;
 		header_->key_size = 0;
@@ -116,7 +101,7 @@ public:
 
 	size_t set_response(mc_binary_header::response_t response,
 	                    const ::std::string &key,
-	                    const ::std::vector<char> &value)  __HC__
+	                    const ::std::vector<char> &value)  __HC__ __CPU__
 	{
 		header_->magic = mc_binary_header::MAGIC_RESPONSE;
 		header_->key_size = ::std::hton<uint16_t>(key.size());
