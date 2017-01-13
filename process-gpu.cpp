@@ -16,7 +16,8 @@ int async_process_gpu(const params *p)
 
 	uint64_t socket = p->gpu_socket;
 
-	unsigned groups = (20480 / p->bucket_size);
+	unsigned groups = p->gpu_work_groups == -1 ? (20480 / p->bucket_size)
+	                                           : p->gpu_work_groups;
 	using buffer_t = ::std::vector<char>;
 	::std::vector<buffer_t> buffers(groups, buffer_t(p->buffer_size));
 	::std::vector<struct sockaddr_in> addresses(groups);
