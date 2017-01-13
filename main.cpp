@@ -12,6 +12,7 @@ static const struct option options[] = {
 	{"cpu-port", required_argument, NULL, 'c'},
 	{"gpu-port", required_argument, NULL, 'g'},
 	{"cpu-threads", required_argument, NULL, 't'},
+	{"gpu-work-groups", required_argument, NULL, 'w'},
 	{"buffer-size", required_argument, NULL, 'b'},
 	{"bucket-size", required_argument, NULL, 's'},
 	{"bucket-count", required_argument, NULL, 'n'},
@@ -52,7 +53,7 @@ int main(int argc, char *argv[])
 	params p;
 	char c;
 	opterr = 0;
-	while ((c = getopt_long(argc, argv, "c:g:b:t:s:n:vh", options, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "c:g:b:t:w:s:n:vh", options, NULL)) != -1) {
 		switch (c) {
 		case 'c':
 			p.open_cpu_socket(::std::stoi(optarg));
@@ -65,6 +66,9 @@ int main(int argc, char *argv[])
 			break;
 		case 't':
 			p.thread_count = ::std::stoi(optarg);
+			break;
+		case 'w':
+			p.gpu_work_groups = ::std::stoi(optarg);
 			break;
 		case 's':
 			p.bucket_size = ::std::stoi(optarg);

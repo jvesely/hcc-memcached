@@ -19,6 +19,7 @@ struct params {
 	int gpu_socket = -1;
 	bool verbose = false;
 	unsigned thread_count = ::std::thread::hardware_concurrency();
+	int gpu_work_groups = -1;
 	unsigned bucket_size = 1024;
 	unsigned bucket_count = 1024;
 	::std::atomic_uint on_switch;
@@ -52,8 +53,9 @@ struct params {
 };
 static inline ::std::ostream & operator << (::std::ostream &O, const params &p)
 {
-	O << "[" << p.gpu_socket << "r, " << p.cpu_socket << "w, "
+	O << "[" << p.gpu_socket << "g, " << p.cpu_socket << "c, "
 	  << p.buffer_size << "B, " << p.thread_count << "T, "
+	  << p.gpu_work_groups << "WG, "
 	  << p.bucket_count << "x" << p.bucket_size
 	  << (p.verbose ? ", v":"") << "]";
 	return O;
