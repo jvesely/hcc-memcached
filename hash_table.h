@@ -78,8 +78,11 @@ public:
 			buckets_.emplace_back(bucket(elements));
 	}
 
-	bucket &get_bucket(const char *key_begin, size_t key_size) __HC__ __CPU__
-	{ return buckets_[hash(key_begin, key_size) % buckets_.size()];	}
+	bucket &get_bucket(uint32_t hashed)
+	{ return buckets_[hashed % buckets_.size()]; }
+
+	bucket &get_bucket(const char *key_begin, size_t key_size)
+	{ return get_bucket(hash(key_begin, key_size)); }
 
 	bucket &get_bucket(const ::std::string &key)
 	{ return get_bucket(key.data(), key.size()); }
