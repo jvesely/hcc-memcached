@@ -63,6 +63,9 @@ int async_process_gpu(const params *p, hash_table *storage)
 
 		volatile tile_static ssize_t data_len;
 		volatile tile_static bool any_found;
+		// TODO: this should be ::std::atomic_uint
+		// TODO implement atomic load/store in LDS
+		tile_static unsigned hash;
 
 		size_t tlid = idx.tile[0];
 		bool is_lead = (idx.local[0] == 0);
@@ -71,6 +74,7 @@ int async_process_gpu(const params *p, hash_table *storage)
 			address_len[tlid] = sizeof(struct sockaddr_in);
 			size_t response_size = 0;
 			if (is_lead) {
+				hc::atomic_exchange(&hash, 0);
 				any_found = false;
 				data_len = sc.send(SYS_recvfrom,
 				                   {socket, buffer_ptr,
@@ -133,10 +137,18 @@ int async_process_gpu(const params *p, hash_table *storage)
 				}
 				continue;
 			}
+			int id = idx.local[0];
+			// Keep this in sync with the HT implementation
+			for (unsigned offset = 0; (offset + id) < key.size();
+			     offset += idx.tile_dim[0]) {
+				unsigned i = id + offset;
+				uint32_t lval = key.data()[i] << ((i % 2) * 8);
+				hc::atomic_fetch_xor(&hash, lval);
+			}
+			idx.barrier.wait_with_tile_static_memory_fence();
 
 			bool found = false;
-			auto &bucket = storage->get_bucket(key.data(),
-			                                   key.size());
+			auto &bucket = storage->get_bucket(hash);
 			bucket.read_lock();
 			const auto &e =
 				bucket.get_element_array()[idx.local[0]];
