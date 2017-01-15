@@ -62,7 +62,7 @@ int async_process_gpu(const params *p, hash_table *storage)
 		}
 
 		volatile tile_static ssize_t data_len;
-		volatile tile_static bool any_found;
+		volatile tile_static uint64_t element;
 		// TODO: this should be ::std::atomic_uint
 		// TODO implement atomic load/store in LDS
 		tile_static unsigned hash;
@@ -75,7 +75,7 @@ int async_process_gpu(const params *p, hash_table *storage)
 			size_t response_size = 0;
 			if (is_lead) {
 				hc::atomic_exchange(&hash, 0);
-				any_found = false;
+				element = 0;
 				data_len = sc.send(SYS_recvfrom,
 				                   {socket, buffer_ptr,
 				                    buffer.size(), MSG_TRUNC,
@@ -156,8 +156,8 @@ int async_process_gpu(const params *p, hash_table *storage)
 				bucket.get_element_array()[idx.local[0]];
 			if (e.key.size() == key.size() &&
 			    0 == ::std::strncmp(e.key.data(), key.data(), key.size())) {
+				element = (uint64_t)&e;
 				found = true;
-				any_found = true;
 				response_size = cmd.set_response(
 					mc_binary_header::RE_OK, e.key, e.data);
 			}
@@ -172,7 +172,7 @@ int async_process_gpu(const params *p, hash_table *storage)
 
 			idx.barrier.wait_with_tile_static_memory_fence();
 
-			if (!any_found) {
+			if (element == 0) {
 				// This barrier should prevent hcc from
 				// miscompiling and corrupting the condition
 				// vector
