@@ -149,7 +149,9 @@ int async_process_gpu(const params *p, hash_table *storage)
 
 			bool found = false;
 			auto &bucket = storage->get_bucket(hash);
-			bucket.read_lock();
+			if (is_lead)
+				bucket.read_lock();
+			idx.barrier.wait();
 			const auto &e =
 				bucket.get_element_array()[idx.local[0]];
 			if (e.key.size() == key.size() &&
@@ -159,7 +161,9 @@ int async_process_gpu(const params *p, hash_table *storage)
 				response_size = cmd.set_response(
 					mc_binary_header::RE_OK, e.key, e.data);
 			}
-			bucket.read_unlock();
+			idx.barrier.wait();
+			if (is_lead)
+				bucket.read_unlock();
 			if (found) {
 				sc.send(SYS_sendto, {socket, buffer_ptr,
 				                     response_size,
