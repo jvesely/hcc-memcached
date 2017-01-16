@@ -159,8 +159,29 @@ int async_process_gpu(const params *p, hash_table *storage)
 				element = (uint64_t)&e;
 				found = true;
 				response_size = cmd.set_response(
-					mc_binary_header::RE_OK, e.key, e.data);
+					mc_binary_header::RE_OK,
+					e.key.size(), e.data.size());
 			}
+			idx.barrier.wait_with_tile_static_memory_fence();
+
+			bucket::element *el = (bucket::element*)element;
+			// copy the key
+			for (unsigned offset = 0;
+			     el && (offset + id) < el->key.size();
+			     offset += idx.tile_dim[0]) {
+				unsigned i = id + offset;
+				buffer.data()[32 + i] = el->key.data()[i];
+			}
+
+			// copy the data
+			for (unsigned offset = 0;
+			     el && (offset + id) < el->data.size();
+			     offset += idx.tile_dim[0]) {
+				unsigned i = id + offset;
+				buffer.data()[32 + el->key.size() + i]
+					= el->data.data()[i];
+			}
+
 			idx.barrier.wait();
 			if (is_lead)
 				bucket.read_unlock();
