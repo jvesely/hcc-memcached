@@ -18,7 +18,7 @@
 
 // temporary
 
-static void cpu_process(const params *p, hash_table *storage)
+static void cpu_process(const params *p, hash_table *storage, ::std::atomic_uint *count)
 {
 	int socket = p->cpu_socket;
 	const ::std::atomic_uint *on = &p->on_switch;
@@ -26,6 +26,7 @@ static void cpu_process(const params *p, hash_table *storage)
 	struct sockaddr *addr = (struct sockaddr *)&address;
 	socklen_t address_len = sizeof(address);
 	::std::vector<char> buffer(p->buffer_size);
+	unsigned packet_count = 0;
 	while (*on) {
 		address_len = sizeof(address);
 		size_t data_len = recvfrom(socket, buffer.data(), buffer.size(),
@@ -33,6 +34,7 @@ static void cpu_process(const params *p, hash_table *storage)
 
 		if (data_len == 0) //spurious return
 			continue;
+		++packet_count;
 
 		size_t response_size = 0;
 
@@ -86,15 +88,18 @@ static void cpu_process(const params *p, hash_table *storage)
 			::std::cerr <<cmd << "\n";
 		sendto(socket, buffer.data(), response_size, 0, addr, address_len);
 	}
+	(*count) += packet_count;
 }
 
 int async_process_cpu(const params *p, hash_table *storage)
 {
+	::std::atomic_uint count(0);
 	::std::deque<::std::thread> threads;
 	while (threads.size() < p->thread_count)
-		threads.push_back(::std::thread(cpu_process, p, storage));
+		threads.push_back(::std::thread(cpu_process, p, storage, &count));
 	::std::cout << "Launched " << threads.size() << " CPU threads\n";
 	for (auto &t: threads)
 		t.join();
+	::std::cout << "CPU threads processed " << count << " packets\n";
 	return 0;
 }
