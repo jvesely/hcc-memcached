@@ -1,6 +1,12 @@
 #pragma once
 
-#include <hc.hpp>
+#ifdef __HCC__
+#  include <hc.hpp>
+#else
+#  define __HC__
+#  define __CPU__
+#endif
+
 #include <atomic>
 
 class rwlock {

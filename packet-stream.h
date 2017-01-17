@@ -1,7 +1,12 @@
 #pragma once
 
 #include <string>
-#include <hc.hpp>
+#ifdef __HCC__
+#  include <hc.hpp>
+#else
+#  define __HC__
+#  define __CPU__
+#endif
 
 #include "hc-std-helpers.h"
 

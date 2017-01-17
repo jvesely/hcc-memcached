@@ -3,6 +3,7 @@
 #include "rwlock.h"
 
 #include <vector>
+#include <cassert>
 
 class bucket {
 public:

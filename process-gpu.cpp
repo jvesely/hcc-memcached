@@ -7,17 +7,23 @@
 #include <iostream>
 #include <numeric>
 
-#include <hc.hpp>
-#include <hc_syscalls.h>
+#ifdef __HCC__
+#  include <hc.hpp>
+#  include <hc_syscalls.h>
+#else
+#  define __HC__
+#  define __CPU__
+#endif
 #include <sys/syscall.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-extern "C" void __hsa_vcache_wbinvl1_vol(void)[[hc]];
-extern "C" void __hsa_dcache_inv(void)[[hc]];
+#ifdef __HCC__
+extern "C" void __hsa_vcache_wbinvl1_vol(void)__HC__;
+extern "C" void __hsa_dcache_inv(void)__HC__;
 
-void cache_invalidate_l1()[[hc]]
+void cache_invalidate_l1()__HC__
 {
 	__hsa_vcache_wbinvl1_vol();
 	__hsa_dcache_inv();
@@ -220,3 +226,9 @@ int async_process_gpu(const params *p, hash_table *storage)
 	            << " packets\n";
 	return 0;
 }
+#else
+int async_process_gpu(const params *p, hash_table *storage)
+{
+	return -1;
+}
+#endif

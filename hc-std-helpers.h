@@ -1,6 +1,11 @@
 #pragma once
 
-#include <hc.hpp>
+#ifdef __HCC__
+#  include <hc.hpp>
+#else
+#  define __HC__
+#  define __CPU__
+#endif
 #include <arpa/inet.h>
 
 // Provide GPU implementations of basic routines
@@ -45,6 +50,7 @@ namespace std {
 		return (n == 0) ? 0 : (*a < *b ? -1 : 1);
 	}
 
+#ifdef __HCC__
 	inline int atoi(const char *a) __HC__
 	{
 		while (a[0] == ' ')
@@ -59,6 +65,7 @@ namespace std {
 			val = (val * 10) + (a[0] - '0');
 		return val * sign;
 	}
+#endif
 
 	template<typename T>
 	inline T * memcpy(T *dst, const T *src, size_t count) __HC__
