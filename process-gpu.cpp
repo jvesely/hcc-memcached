@@ -20,15 +20,16 @@ int async_process_gpu(const params *p)
 	using buffer_t = ::std::vector<char>;
 	::std::vector<buffer_t> buffers(groups, buffer_t(p->buffer_size));
 	::std::vector<struct sockaddr_in> addresses(groups);
-	socklen_t address_len = sizeof(struct sockaddr_in);
+	::std::vector<socklen_t> address_len(groups, sizeof(struct sockaddr_in));
 
 	auto textent = hc::extent<1>::extent(p->bucket_size).tile(p->bucket_size);
 	parallel_for_each(textent, [&](hc::tiled_index<1> idx) [[hc]] {
 		buffer_t &buffer = buffers[idx.tile[0]];
 		uint64_t addr = (uint64_t)&addresses[idx.tile[0]];
+		size_t tlid = idx.tile[0];
 
 		while (p->on_switch) {
-			address_len = sizeof(struct sockaddr_in);
+			address_len[tlid] = sizeof(struct sockaddr_in);
 			volatile tile_static ssize_t data_len;
 			if (idx.local[0] == 0) {
 				data_len = sc.send(SYS_recvfrom,
@@ -36,7 +37,7 @@ int async_process_gpu(const params *p)
 				                    (uint64_t)buffer.data(),
 				                     buffer.size(), MSG_TRUNC,
 			                             addr,
-			                            (uint64_t)&address_len});
+			                            (uint64_t)&address_len[tlid]});
 			}
 			idx.barrier.wait_with_tile_static_memory_fence();
 
@@ -46,7 +47,7 @@ int async_process_gpu(const params *p)
 				sc.send(SYS_sendto, {(uint64_t)socket,
 			                             (uint64_t)buffer.data(),
 			                             response_size,
-					             0, addr, address_len});
+					             0, addr, address_len[tlid]});
 			}
 		}
 	}).wait();
