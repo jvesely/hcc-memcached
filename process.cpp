@@ -42,8 +42,13 @@ static void cpu_process(const params *p, struct stats *s)
 		++out_packets;
 
 		address_len = sizeof(address);
-		size_t data_len = recvfrom(sock, buffer.data(), ret,
-		                           MSG_TRUNC, addr, &address_len);
+		ssize_t data_len;
+		do {
+			errno = 0;
+			data_len = recvfrom(sock, buffer.data(), ret,
+		                   MSG_TRUNC | MSG_DONTWAIT, addr, &address_len);
+			::std::this_thread::yield();
+		} while (data_len == -1 && errno == EAGAIN && *on);
 		if (data_len != buffer.size())
 			::std::cerr << "Data for " << my_id << ":"
 			            << data_len << "\n";
