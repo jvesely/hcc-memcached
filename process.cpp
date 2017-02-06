@@ -43,12 +43,16 @@ static void cpu_process(const params *p, struct stats *s)
 
 		address_len = sizeof(address);
 		ssize_t data_len;
+		auto start = ::std::chrono::high_resolution_clock::now();
+		::std::chrono::milliseconds ms;
 		do {
 			errno = 0;
 			data_len = recvfrom(sock, buffer.data(), ret,
 		                   MSG_TRUNC | MSG_DONTWAIT, addr, &address_len);
 			::std::this_thread::yield();
-		} while (data_len == -1 && errno == EAGAIN && *on);
+			auto end = ::std::chrono::high_resolution_clock::now();
+			ms = ::std::chrono::duration_cast<::std::chrono::milliseconds>(end - start);
+		} while (data_len == -1 && errno == EAGAIN && *on && ms.count() < 100);
 		if (data_len != buffer.size())
 			::std::cerr << "Data for " << my_id << ":"
 			            << data_len << "\n";
