@@ -8,8 +8,8 @@ OBJS=$(SRCS:.cpp=.o)
 DEPS=$(OBJS:.o=.d)
 
 
-CPPFLAGS=-Wall
-CXXFLAGS=-g -O3 -Wall -pthread
+CPPFLAGS=-Wall -std=c++11
+CXXFLAGS=-g -O3 -Wall -pthread -std=c++11
 LDFLAGS=-pthread
 
 all: $(BIN)
