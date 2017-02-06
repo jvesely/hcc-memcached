@@ -14,6 +14,7 @@ static const struct option options[] = {
 	{"port", required_argument, NULL, 'p'},
 	{"buffer-size", required_argument, NULL, 'b'},
 	{"cpu-threads", required_argument, NULL, 't'},
+	{"delay", required_argument, NULL, 'd'},
 	{"verbose", no_argument, NULL, 'v'},
 	{"help", no_argument, NULL, 'h'},
 	{NULL, }
@@ -22,9 +23,10 @@ static const struct option options[] = {
 int main(int argc, char *argv[])
 {
 	params p;
+	unsigned delay = 0;
 	char c;
 	opterr = 0;
-	while ((c = getopt_long(argc, argv, "a:p:b:t:s:vh", options, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "a:p:b:t:s:d:vh", options, NULL)) != -1) {
 		switch (c) {
 		case 'a':
 			inet_aton(optarg, &p.address.sin_addr);
@@ -37,6 +39,9 @@ int main(int argc, char *argv[])
 			break;
 		case 't':
 			p.thread_count = ::std::stoi(optarg);
+			break;
+		case 'd':
+			delay = ::std::stoi(optarg);
 			break;
 		case 'v':
 			p.verbose = true;
@@ -53,7 +58,7 @@ int main(int argc, char *argv[])
 			return 0;
 		}
 	}
-	if (!p.isValid()) {
+	if (!p.isValid() && delay > 0 && delay < 500) {
 		::std::cerr << "Invalid configuration: " << p << ::std::endl;
 		return 1;
 	}
@@ -61,7 +66,7 @@ int main(int argc, char *argv[])
 	::std::cout << "Running " << argv[0] << " " << p << ::std::endl;
 	auto cpu = ::std::async(::std::launch::async, async_process_cpu, &p);
 	::std::cout << "Press any key to exit...\n";
-	getchar();
+	sleep(delay);
 	p.on_switch = 0;
 	cpu.wait();
 	return 0;
