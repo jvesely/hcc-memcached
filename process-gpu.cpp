@@ -23,7 +23,7 @@ int async_process_gpu(const params *p)
 	::std::vector<struct sockaddr_in> addresses(groups);
 	::std::vector<socklen_t> address_len(groups, sizeof(struct sockaddr_in));
 
-	auto textent = hc::extent<1>::extent(p->bucket_size).tile(p->bucket_size);
+	auto textent = hc::extent<1>::extent(groups * p->bucket_size).tile(p->bucket_size);
 	parallel_for_each(textent, [&](hc::tiled_index<1> idx) [[hc]] {
 		size_t tlid = idx.tile[0];
 		buffer_t &buffer = buffers[tlid];
