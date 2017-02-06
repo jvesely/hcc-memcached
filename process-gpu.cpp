@@ -25,9 +25,9 @@ int async_process_gpu(const params *p)
 
 	auto textent = hc::extent<1>::extent(p->bucket_size).tile(p->bucket_size);
 	parallel_for_each(textent, [&](hc::tiled_index<1> idx) [[hc]] {
-		buffer_t &buffer = buffers[idx.tile[0]];
-		uint64_t addr = (uint64_t)&addresses[idx.tile[0]];
 		size_t tlid = idx.tile[0];
+		buffer_t &buffer = buffers[tlid];
+		uint64_t addr = (uint64_t)&addresses[tlid];
 
 		while (p->on_switch) {
 			address_len[tlid] = sizeof(struct sockaddr_in);
