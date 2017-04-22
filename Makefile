@@ -30,4 +30,4 @@ $(BIN): $(OBJS)
 -include $(DEPS)
 
 clean:
-	rm -vf $(OBJS) $(BINS) $(DEPS)
+	rm -vf $(OBJS) $(BIN) $(DEPS)
