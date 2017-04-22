@@ -8,8 +8,8 @@ BIN=memcached
 OBJS=$(SRCS:.cpp=.o)
 DEPS=$(OBJS:.o=.d)
 
-HCC_CONFIG=/opt/hcc-amdgpu/bin/hcc-config
-CXX=/opt/hcc-amdgpu/bin/hcc
+HCC_CONFIG=/opt/rocm/hcc-amdgpu/bin/hcc-config
+CXX=/opt/rocm/hcc-amdgpu/bin/hcc
 
 #hcc-config mixes compiler and preprocessor flags
 CPPFLAGS=$(shell $(HCC_CONFIG) --cxxflags --install) -Wall
