@@ -59,7 +59,7 @@ int async_process_gpu(const params *p, hash_table *storage)
 	::std::string e_notget("Unsupported operation\n");
 	::std::string e_corrupted("Reuqest packet corrupt\n");
 
-	auto textent = hc::extent<1>::extent(groups * p->bucket_size).tile(p->bucket_size);
+	auto textent = hc::extent<1>(groups * p->bucket_size).tile(p->bucket_size);
 	parallel_for_each(textent, [&](hc::tiled_index<1> idx) [[hc]] {
 		buffer_t &buffer = buffers[idx.tile[0]];
 		uint64_t buffer_ptr = (uint64_t)buffer.data();
