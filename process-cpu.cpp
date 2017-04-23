@@ -94,7 +94,7 @@ int async_process_cpu(const params *p, hash_table *storage)
 	::std::atomic_uint count(0);
 	::std::deque<::std::thread> threads;
 	while (threads.size() < p->thread_count)
-		threads.push_back(::std::thread(cpu_process, p, storage, &count));
+		threads.push_back(::std::thread([&](){cpu_process(p, storage, &count);}));
 	::std::cout << "Launched " << threads.size() << " CPU threads\n";
 	for (auto &t: threads)
 		t.join();
