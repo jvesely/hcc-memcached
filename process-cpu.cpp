@@ -91,6 +91,8 @@ static void cpu_process(const params *p, hash_table *storage, ::std::atomic_uint
 
 int async_process_cpu(const params *p, hash_table *storage)
 {
+	if (p->cpu_socket < 0)
+		return -1;
 	::std::atomic_uint count(0);
 	::std::deque<::std::thread> threads;
 	while (threads.size() < p->thread_count)
