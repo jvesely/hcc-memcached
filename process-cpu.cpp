@@ -34,6 +34,8 @@ static void cpu_process(const params *p)
 
 int async_process_cpu(const params *p)
 {
+	if (p->cpu_socket < 0)
+		return -1;
 	::std::deque<::std::thread> threads;
 	while (threads.size() < p->thread_count)
 		threads.push_back(::std::thread(cpu_process, p));
