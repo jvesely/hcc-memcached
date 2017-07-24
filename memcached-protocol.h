@@ -101,8 +101,10 @@ public:
 		header_->extras_size = 0;
 		header_->status = ::std::hton<uint16_t>(response);
 		header_->total_size = ::std::hton<uint32_t>(key_size + value_size);
-		return (udp_header_ ? sizeof(*udp_header_) : 0) +
-			sizeof(*header_) + key_size + value_size;
+		// Keep this cast. it works around HCC bugs
+		volatile unsigned long f = (unsigned long)udp_header_;
+		return (f ? sizeof(*udp_header_) : 0) +
+		        sizeof(*header_) + key_size + value_size;
 	}
 
 	size_t set_response(mc_binary_header::response_t response,
