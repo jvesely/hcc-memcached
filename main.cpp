@@ -104,11 +104,13 @@ int main(int argc, char *argv[])
 	::std::cout << "Running " << argv[0] << " " << p << ::std::endl;
 	auto cpu = ::std::async(::std::launch::async, async_process_cpu, &p, &h);
 	auto gpu = ::std::async(::std::launch::async, async_process_gpu, &p, &h);
+	auto hybrid = ::std::async(::std::launch::async, async_process_hybrid, &p, &h);
 	::std::cout << "Press any key to exit...\n";
 	getchar();
 	p.on_switch = 0;
 	p.close_all();
 	cpu.wait();
 	gpu.wait();
+	hybrid.wait();
 	return 0;
 }

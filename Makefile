@@ -2,6 +2,7 @@ SRCS= \
 	main.cpp \
 	memcached-protocol.cpp \
 	process-cpu.cpp \
+	process-hybrid.cpp \
 	process-gpu.cpp
 
 BIN=memcached
