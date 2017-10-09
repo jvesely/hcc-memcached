@@ -20,6 +20,7 @@
 #include <netinet/in.h>
 
 #ifdef __HCC__
+#if __hcc_major__ < 1
 extern "C" void __hsa_vcache_wbinvl1_vol(void)__HC__;
 extern "C" void __hsa_dcache_inv(void)__HC__;
 
@@ -28,6 +29,15 @@ void cache_invalidate_l1()__HC__
 	__hsa_vcache_wbinvl1_vol();
 	__hsa_dcache_inv();
 }
+#elif __KALMAR_ACCELERATOR__ == 1
+void cache_invalidate_l1()__HC__
+{
+	__builtin_amdgcn_s_dcache_inv();
+	__builtin_amdgcn_buffer_wbinvl1();
+}
+#else
+void cache_invalidate_l1()__HC__;
+#endif
 
 void print_error(syscalls &sc, const ::std::string &m) __HC__
 {
